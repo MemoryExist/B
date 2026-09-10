@@ -1,0 +1,182 @@
+%!TEX program = xelatex
+% 1. 文档类必须放在最顶端（最第一行）
+\documentclass[withoutpreface,bwprint]{cumcmthesis} % 已加选项，隐藏承诺书和编号页
+
+% 2. 引入宏包（必须放在 \documentclass 之后）
+\usepackage[framemethod=TikZ]{mdframed}
+\usepackage{url}
+\usepackage{subcaption}
+
+
+\usepackage[utf8]{inputenc}
+\usepackage{ctex} % 引入中文宏包
+
+% 3. 填写你的论文信息
+\title{全国大学生数学建模竞赛论文题目} % 此处修改为你的实际论文题目
+\tihao{B}
+\baominghao{4321}
+\schoolname{武汉大学}
+\membera{刘泽}
+\memberb{贾皓宇}
+\memberc{陈宋欣}
+\supervisor{}
+\yearinput{2026}
+\monthinput{08}
+\dayinput{01}
+
+% 4. 正文开始（全篇只保留这唯一一个 \begin{document}）
+\begin{document}
+
+\maketitle % 生成标题
+
+\begin{abstract}
+这里是全国大学生数学建模竞赛论文的展示，我接下来要通过\textbf{贪心算法}来解释，接下来你会看到很多内容。
+
+\textbf{针对问题一：}首先简要介绍\textbf{工作原理}，以中心点为坐标坐标系。
+
+\keywords{贪心算法\quad\textbf{线性拟合} \quad 流程图}
+\end{abstract}
+
+\tableofcontents % 目录
+
+\section{问题的重述}
+\subsection{问题的背景}
+无线电是科技信息时代的重要工具，广泛应用于新闻通讯、商业交互、军事联络等诸多领域。
+无线电干扰会影响通信设备及无线电系统的正常运行，快速定位并清除干扰源是频谱管理中的重要任务。
+传统方法分为初步监测、区域性排查、精准定位三阶段，其中可依据固定监测站、移动监测车或无人机进行大范围初筛，
+但精确定位主要依靠人工携带测向设备在目标区域内逐步排查，效率较低，且在危险环境下存在安全隐患。
+
+某公司拟研发一个搭载于机器狗的干扰源自动定位清除系统，通过利用测向设备获取信号场强及方向等信息，自主搜索并定位干扰源。
+已知干扰源位于以原点为圆心、半径1800 m的圆形区域内，数量和具体位置均未知。以正东方向为x正半轴，正北方向为y轴正半轴建立平面直角坐标系。
+\subsection{问题的提出}
+\textbf{问题1：} 目前存在坐标已知的若干检测点，且已知某干扰源关于这些检测点的示向度，以及用来确定位置的交会定位法。
+需建立算法计算出多边形定位区域的直径，并判断以此为直径的圆是否可以覆盖此定位区域。
+
+\textbf{问题2：} 已知某一个全方向发出信号的干扰源及其在一检测点的示向度，
+应建立数学模型确定第二个检测点的最优坐标范围。
+
+\textbf{问题3：}在未知具体数目（10-16个）的干扰源全方向发出干扰信号的情境下，
+配备干扰源自动定位清除系统的机器狗初始位置在原点，测向机初始频道为1，
+求任务用时最短的策略及算法，并以“被清除干扰源个数的比例”和“平均定位清除时间”为评价标准，
+在模拟器的演练测试计算检验策略有效性。
+\section{模型的假设}
+1.假设不考虑信号接收源的示位偏差。
+
+2.假设干扰源的信号强度在各个方向上均匀分布。
+\section{符号说明}
+西四环休息不iu吧
+\section{问题分析}
+洗脑或许奥晒
+下面给出写作与排版上的一些建议。
+\section{模型的建立与求解}
+\section{模型的评价、改进与推广}
+\section{AI工具使用声明}
+本参赛队在竞赛过程中使用了 AI 工具，
+主要用于【简要用途，如语言润色、代码调试等】，详细使用情况
+见支撑材料。
+\section{参考文献与引用}
+参考文献对于一篇正式的论文来说是必不可少的，在建模中重要的参考文献当然应该列出。\LaTeX{}在这方面的功能也是十分强大的，下面进介绍一个比较简单的参考文献制作方法。有兴趣的可以学习 \verb|bibtex| 或 \verb|biblatex| 的使用。
+
+\LaTeX{}的入门书籍可以看《\LaTeX{}入门》\cite{liuhaiyang2013latex}。这是一个简单的引用，用 \verb|\cite{bibkey}| 来完成。要引用成功，当然要维护好 bibitem 了。下面是个简单的例子。
+
+
+
+%参考文献
+\begin{thebibliography}{9}%宽度9，表示标签（Label）的最大宽度预留
+    \bibitem[1]{liuhaiyang2013latex}
+    刘海洋.
+    \newblock \LaTeX {}入门\allowbreak[J].%允许在适当位置换行
+    \newblock 电子工业出版社, 北京, 2013.
+    \bibitem[2]{mathematical-modeling}
+    全国大学生数学建模竞赛论文格式规范 (2020 年 8 月 25 日修改).
+    \bibitem{3} \url{https://www.latexstudio.net}
+\end{thebibliography}
+
+\newpage
+%附录
+\begin{appendices}
+
+\section{模板所用的宏包}
+\begin{table}[htbp]
+    \centering
+    \caption{宏包罗列}
+    \begin{tabular}{ccccc}
+        \toprule
+        \multicolumn{5}{c}{模板中已经加载的宏包} \\
+        \midrule
+        amsbsy & amsfonts & {amsgen} & {amsmath} & {amsopn} \\
+        amssymb & amstext & {appendix} & {array} & {atbegshi} \\
+        atveryend & auxhook & {bigdelim} & {bigintcalc} & {bigstrut} \\
+        bitset & bm    & {booktabs} & {calc} & {caption} \\
+        caption3 & CJKfntef & {cprotect} & {ctex} & {ctexhook} \\
+        ctexpatch & enumitem & {etexcmds} & {etoolbox} & {everysel} \\
+        expl3 & fix-cm & {fontenc} & {fontspec} & {fontspec-xetex} \\
+        geometry & gettitlestring & {graphics} & {graphicx} & {hobsub} \\
+        hobsub-generic & hobsub-hyperref & {hopatch} & {hxetex} & {hycolor} \\
+        hyperref & ifluatex & {ifpdf} & {ifthen} & {ifvtex} \\
+        ifxetex & indentfirst & {infwarerr} & {intcalc} & {keyval} \\
+        kvdefinekeys & kvoptions & {kvsetkeys} & {l3keys2e} & {letltxmacro} \\
+        listings & longtable & {lstmisc} & {ltcaption} & {ltxcmds} \\
+        multirow & nameref & {pdfescape} & {pdftexcmds} & {refcount} \\
+        rerunfilecheck & stringenc & {suffix} & {titletoc} & {tocloft} \\
+        trig  & ulem  & {uniquecounter} & {url} & {xcolor} \\
+        xcolor-patch & xeCJK & {xeCJKfntef} & {xeCJK-listings} & {xparse} \\
+        xtemplate & zhnumber &       &       &  \\
+        \bottomrule
+    \end{tabular}%
+    \label{tab:addlabel}%
+\end{table}%
+
+以上宏包都已经加载过了，不要重复加载它们。
+
+\section{排队算法--matlab 源程序}
+
+\begin{lstlisting}[language=matlab]
+kk=2;[mdd,ndd]=size(dd);
+while ~isempty(V)
+[tmpd,j]=min(W(i,V));tmpj=V(j);
+for k=2:ndd
+[tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
+tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
+end
+tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
+if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
+else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
+if dd(2,tmp4)==ss(tmp6,tmp4)
+ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
+else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
+end;end
+dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
+[mdd,ndd]=size(dd);kk=kk+1;
+end; S=ss; D=dd(1,:);
+ \end{lstlisting}
+
+ \section{规划解决程序--lingo源代码}
+
+\begin{lstlisting}[language=c]
+kk=2;
+[mdd,ndd]=size(dd);
+while ~isempty(V)
+    [tmpd,j]=min(W(i,V));tmpj=V(j);
+for k=2:ndd
+    [tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
+    tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
+end
+    tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
+if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
+else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
+if dd(2,tmp4)==ss(tmp6,tmp4)
+    ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
+else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
+end;
+end
+    dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
+    [mdd,ndd]=size(dd);
+    kk=kk+1;
+end;
+S=ss;
+D=dd(1,:);
+ \end{lstlisting}
+\end{appendices}
+
+\end{document} 
