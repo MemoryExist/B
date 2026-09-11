@@ -19,4 +19,5 @@ for i = 1:numel(r)
         W(:, k) = r(i) * [cos(a(j)); sin(a(j))];
     end
 end
+W=W(:,in_D(W,cfg));
 end

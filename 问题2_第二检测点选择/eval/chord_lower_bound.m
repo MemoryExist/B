@@ -7,9 +7,13 @@ function ell = chord_lower_bound(P, cfg)
 %   (长度 2r* ≈ 51.46 米), 直径上所有点具有相同真实方向且全部属于 D,
 %   因此该定位区域包含这条直径 → f1(P) ≥ r*。
 %   这是对所有 P∈E 成立的理论下界, 不是可达到的最优精度。
-if ~in_E(P, cfg)
+rs=cfg.Lmax*sin(cfg.delta)/(1+sin(cfg.delta));
+C=[cfg.Lmax/(1+sin(cfg.delta));0];
+if ~in_E(P,cfg) || norm(P(:)-C)<=rs+cfg.r_inner || ...
+        norm(C)-rs<=cfg.r_inner || ...
+        (cfg.crop_enabled && norm(C-cfg.crop_center(:))+rs>cfg.crop_radius)
     ell = 0;
     return;
 end
-ell = cfg.Lmax * sin(cfg.delta) / (1 + sin(cfg.delta));
+ell=rs;
 end
