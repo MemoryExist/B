@@ -3,13 +3,26 @@
 \documentclass[withoutpreface,bwprint]{cumcmthesis} % 已加选项，隐藏承诺书和编号页
 
 % 2. 引入宏包（必须放在 \documentclass 之后）
+% 注意：cumcmthesis.cls 已自动加载 ctex、amsmath、amssymb、amsthm 的等价内容、
+% url、subcaption、float、cleveref 等宏包，切勿重复加载（会导致报错）。
 \usepackage[framemethod=TikZ]{mdframed}
-\usepackage{url}
-\usepackage{subcaption}
 
+% 问题一推导中使用的数学记号
+% 注意：theorem/lemma/corollary/definition/proof 等定理环境已由
+% cumcmthesis.cls 用中文名定义好，切勿再用 \newtheorem 重复定义，
+% 否则会报 "Command \theorem already defined" 以及一连串
+% "No counter '定理' defined" 错误。
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\argvec}{\arg}
+\newcommand{\diam}{\operatorname{diam}}
+\newcommand{\wrap}{\operatorname{wrap}}
+\newcommand{\MEC}{\operatorname{MEC}}
 
-\usepackage[utf8]{inputenc}
-\usepackage{ctex} % 引入中文宏包
+% 文档类未预定义的定理环境（命题、注记）
+% 注意：类文件并未加载 amsthm，故此处不能用 \theoremstyle（会报未定义），
+% 直接用 \newtheorem 默认样式即可。
+\newtheorem{proposition}{命题}
+\newtheorem{remark}{注记}
 
 % 3. 填写你的论文信息
 \title{全国大学生数学建模竞赛论文题目} % 此处修改为你的实际论文题目
@@ -34,7 +47,7 @@
 
 \textbf{针对问题一：}首先简要介绍\textbf{工作原理}，以中心点为坐标坐标系。
 
-\keywords{贪心算法\quad\textbf{线性拟合} \quad 流程图}
+\keywords{多边形覆盖\quad\textbf{线性拟合} \quad 流程图}
 \end{abstract}
 
 \tableofcontents % 目录
@@ -59,27 +72,523 @@
 配备干扰源自动定位清除系统的机器狗初始位置在原点，测向机初始频道为1，
 求任务用时最短的策略及算法，并以“被清除干扰源个数的比例”和“平均定位清除时间”为评价标准，
 在模拟器的演练测试计算检验策略有效性。
+
+\textbf{问题4：}在问题3的基础上，未知具体数目（10-16个）的干扰源包含全向或定向（定向方向两侧各90°）两种类别，
+现在仍然求出检测与清除的策略与算法并检验有效性。
 \section{模型的假设}
 1.假设不考虑信号接收源的示位偏差。
 
 2.假设干扰源的信号强度在各个方向上均匀分布。
 \section{符号说明}
-西四环休息不iu吧
+\begin{table}[htbp]
+\centering
+\begin{tabular}{cll}
+\toprule
+符号 & 含义 & 单位 \\
+\midrule
+$S_i$ & 第 $i$ 个检测点坐标 & m \\
+$\theta_i$ & 第 $i$ 个检测点的示向度 & $^\circ$ \\
+$\tau$ & 测向误差界 & $^\circ$ \\
+$\mathcal R$ & 交会定位区域 & --- \\
+$D$ & 定位区域的直径 & m \\
+$R_{\MEC}$ & 最小覆盖圆半径 & m \\
+\bottomrule
+\end{tabular}
+\end{table}
 \section{问题分析}
-洗脑或许奥晒
-下面给出写作与排版上的一些建议。
+\subsection{问题一分析}
+首先规定相交区域，
+其次证明它是闭凸多边形，
+接着关于其有界性证明，
+最后证明距离的最大值在对角处取到。
 \section{模型的建立与求解}
+\subsection{问题一：交会定位区域及其直径的严格数学推导}
+
+\subsubsection{记号与前提}
+
+\textbf{给定}：检测点 $S_1,\dots,S_n\in\RR^2$ 及相应的示向度
+$\theta_1,\dots,\theta_n\in[0^\circ,360^\circ)$；测向误差界 $\tau=1^\circ$。
+
+\textbf{前提（题设）}：设干扰源真实位置为 $G$，真实方位角
+$\beta_i=\argvec(G-S_i)$，则
+
+\begin{equation}
+\bigl|\wrap(\beta_i-\theta_i)\bigr|\le\tau,\qquad
+\wrap(x)=x-360^\circ\Bigl\lfloor\frac{x+180^\circ}{360^\circ}\Bigr\rfloor
+\in(-180^\circ,180^\circ].
+\tag{A1}
+\end{equation}
+
+\subsubsection{定位区域及其凸性}
+
+\begin{definition}
+单个检测点确定的\textbf{视界楔形}为
+\begin{equation}
+W_i=
+\Bigl\{
+P:\ P=S_i\ \text{或}\
+\bigl|\wrap\bigl(\argvec(P-S_i)-\theta_i\bigr)\bigr|\le\tau
+\Bigr\},
+\end{equation}
+\textbf{交会定位区域}为
+\begin{equation}
+\mathcal R=\bigcap_{i=1}^{n}W_i .
+\end{equation}
+\end{definition}
+
+\begin{theorem}[相容性]
+$G\in\mathcal R$。故 $\mathcal R$ 是干扰源位置的可行域。
+\end{theorem}
+
+\begin{proof}
+由 (A1) 逐点得 $G\in W_i$，故
+$G\in\bigcap_iW_i=\mathcal R$。
+\end{proof}
+
+\begin{lemma}[楔形的纵向--横向刻画]\label{lem:cone}
+取标准正交基
+\begin{equation}
+u_i=(\cos\theta_i,\ \sin\theta_i),\qquad
+v_i=(-\sin\theta_i,\ \cos\theta_i),
+\end{equation}
+记 $d=P-S_i$，$\xi_i=d\cdot u_i$，$\eta_i=d\cdot v_i$。则
+\begin{equation}
+W_i=
+\bigl\{
+S_i+\xi u_i+\eta v_i:
+\ \xi\ge0,\ |\eta|\le\xi\tan\tau
+\bigr\}.
+\tag{1}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+设 $d\neq0$。因 $\{u_i,v_i\}$ 为标准正交基，当 $\xi_i>0$ 时有
+\[
+\argvec d=\theta_i+\arctan(\eta_i/\xi_i).
+\]
+若 $\xi_i\le0$ 且 $d\neq0$，则
+$\lvert\argvec d-\theta_i\rvert\ge90^\circ>\tau$，
+故 $d\notin W_i-S_i$；若 $\xi_i>0$，则
+\[
+d\in W_i-S_i
+\iff
+\bigl|\arctan(\eta_i/\xi_i)\bigr|\le\tau
+\iff
+|\eta_i|\le\xi_i\tan\tau .
+\]
+又 $\xi=0\Rightarrow\eta=0$（否则仍有
+$\lvert\argvec d-\theta_i\rvert=90^\circ$），故闭条件
+$\xi\ge0,\ |\eta|\le\xi\tan\tau$ 恰在
+$\xi=\eta=0$ 处补上基点 $S_i$。
+\end{proof}
+
+\begin{lemma}[楔形 = 两个半平面之交]\label{lem:halfplane}
+令楔形两条边界的交点（楔顶）
+\begin{equation}
+A_i=S_i+\frac{1}{\cos\tau}u_i,
+\end{equation}
+则
+\begin{equation}
+W_i=
+\bigl\{
+P:\ n_i^{+}\cdot P\le n_i^{+}\cdot A_i
+\bigr\}
+\cap
+\bigl\{
+P:\ n_i^{-}\cdot P\le n_i^{-}\cdot A_i
+\bigr\},
+\qquad
+n_i^{\pm}
+=
+\bigl(
+\sin(\theta_i\mp\tau),
+-\cos(\theta_i\mp\tau)
+\bigr).
+\tag{2}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+由引理~\ref{lem:cone}，$W_i$ 的两条边界为射线
+\[
+S_i+t\,e_i^{\pm},
+\qquad
+e_i^{\pm}
+=
+\bigl(
+\cos(\theta_i\pm\tau),
+\sin(\theta_i\pm\tau)
+\bigr),
+\quad t\ge0,
+\]
+二者交于 $t=1/\cos\tau$ 处，即 $A_i$。
+向量 $n_i^{\pm}\perp e_i^{\pm}$ 且为单位向量；校验法向朝向：
+
+轴向点 $S_i+u_i$ 满足
+\[
+n_i^{\pm}\cdot(S_i+u_i)-n_i^{\pm}\cdot A_i
+=
+\cos\tau-\sec\tau
+=
+-\frac{\sin^2\tau}{\cos\tau}<0,
+\]
+而反向点 $S_i-u_i$ 给出
+$-\cos\tau-\sec\tau>0$，
+故所取法向确指向楔形内部，两半平面的交即该角域。
+\end{proof}
+
+\begin{corollary}
+$\mathcal R$ 是\textbf{闭凸集}，且是闭凸多边形（至多 $2n$ 条边）。
+\end{corollary}
+
+\subsubsection{有界性}
+
+\begin{lemma}[逃逸方向]\label{lem:recession}
+非零向量 $\xi$ 是
+$\mathcal R_0=\bigcap_iW_i$
+的回收方向（即存在 $P_0\in\mathcal R_0$ 使
+$P_0+t\xi\in\mathcal R_0,\ \forall t\ge0$）
+当且仅当
+\begin{equation}
+\bigl|\wrap(\theta_i-\argvec\xi)\bigr|\le\tau,
+\qquad i=1,\dots,n .
+\tag{3}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+由式~(1)，$W_i$ 的回收锥为
+\[
+\{t\,e:\ |\argvec e-\theta_i|\le\tau,\ t\ge0\},
+\]
+而
+$\bigcap_iW_i$ 的回收锥等于各回收锥之交。
+闭凸集有界当且仅当其回收锥为 $\{0\}$。
+\end{proof}
+
+\begin{theorem}[有界性判据]\label{thm:bounded}
+记 $\Theta=\{\theta_1,\dots,\theta_n\}$ 的\textbf{最小包围弧}
+\begin{equation}
+\alpha(\Theta)
+=
+360^\circ-\max_k
+\bigl(\theta_{(k+1)}-\theta_{(k)}\bigr)_{360},
+\end{equation}
+其中 $\theta_{(k)}$ 为升序排列、下标循环、
+$(\cdot)_{360}$ 表示取 $[0,360^\circ)$ 内的环间隔。则
+\begin{equation}
+\boxed{
+\mathcal R_0\ \text{有界}
+\iff
+\alpha(\Theta)>2\tau
+}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+由引理~\ref{lem:recession}，
+$\mathcal R_0$ 无界
+$\iff$ 存在方向 $\varphi$ 与所有 $\theta_i$ 的夹角均 $\le\tau$
+\[
+\iff
+\text{所有 }\theta_i\text{ 落入某条长度为 }2\tau\text{ 的弧内}
+\iff
+\alpha(\Theta)\le2\tau.
+\]
+取补即得。
+\end{proof}
+
+\begin{corollary}[两点情形]
+$n=2$、$\Delta\theta=
+\lvert\wrap(\theta_2-\theta_1)\rvert<180^\circ$
+时 $\alpha=\Delta\theta$，故
+\[
+\mathcal R_0\ \text{有界}
+\iff
+\Delta\theta>2\tau=2^\circ .
+\]
+\end{corollary}
+
+\begin{corollary}[模型适用性]\label{cor:boundedness}
+当 $\Delta\theta\le2\tau$
+（两检测点几乎与干扰源共线）时
+$\mathcal R_0$ 是无界双锥，直径无意义。
+
+此时须叠加物理约束，例如
+\[
+\mathcal R
+=
+\mathcal R_0
+\cap
+\bigcap_i
+\{|P-S_i|\le R_{\max}\},
+\qquad
+1000\le R_{\max}\le1500\ \text{m（附录~2(2)）}
+\]
+或 $|P|\le1800$ m（目标区域）。
+$\mathcal R$ 仍为紧凸多边形，下文结论不变。
+\end{corollary}
+
+\subsubsection{直径的精确计算}
+
+\begin{definition}
+$D=\diam\mathcal R=\sup_{P,Q\in\mathcal R}|P-Q|$。
+\end{definition}
+
+\begin{theorem}[直径 = 最大宽度]\label{thm:width}
+对紧集 $K$，
+\begin{equation}
+D=\max_{\lVert\rho\rVert=1}w(\rho),
+\qquad
+w(\rho)
+=
+\max_{P\in K}\rho\cdot P
+-
+\min_{P\in K}\rho\cdot P .
+\tag{4}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+一方面，对任意 $P,Q\in K$ 与 $\lVert\rho\rVert=1$ 有
+$|P-Q|\ge\rho\cdot(P-Q)$，故
+$D\ge\max_\rho w(\rho)$。
+
+另一方面，设 $P^*,Q^*$ 实现 $D$
+（紧集上可达），取
+$\rho^*=(P^*-Q^*)/D$，则
+\[
+w(\rho^*)
+\ge
+\rho^*\cdot(P^*-Q^*)
+=
+D,
+\]
+故 $\max_\rho w(\rho)\ge D$。
+\end{proof}
+
+\begin{theorem}[凸多边形情形的算法结论]\label{thm:vertex}
+设 $\mathcal R$ 的顶点为 $V_1,\dots,V_m$（逆时针），则
+\begin{equation}
+\boxed{
+D=
+\max_{1\le i<j\le m}|V_i-V_j|
+}
+\tag{5}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+固定 $Q$，函数 $P\mapsto|P-Q|$ 是凸函数；
+紧凸集上凸函数的最大值在极点（顶点）取得——否则若 $P$
+位于某条边内部，则该边上 $|P-Q|$ 是凸的一元函数，
+其最大值必在端点。故 $P$ 可取为顶点；
+再对 $Q$ 作同样论证即得式~(5)。
+\end{proof}
+
+\begin{remark}[算法步骤]
+\textbf{(1)} 由式~(2) 得 $\mathcal R$ 的 $2n$ 条半平面
+$n_j\cdot P\le c_j$，用半平面求交（逐步裁剪，
+或按法向极角排序后单调队列）得顶点表
+$V_1,\dots,V_m$，$m\le2n$，复杂度 $O(n^2)$。
+
+\textbf{(2)} 按式~(5) 枚举顶点对求最大距离，$O(m^2)$；
+或先取凸包再用旋转卡壳 $O(m)$。
+
+\textbf{(3)} 交叉校验：用式~(4) 在方向集
+\[
+\left\{
+\rho_{ij}
+=
+\frac{V_j-V_i}{|V_j-V_i|}
+\right\}
+\]
+上取 $\max w(\rho)$，
+与式~(5) 的结果必须一致
+（凸多边形上 $w$ 的局部极大只出现在某对顶点连线方向上）。
+\end{remark}
+
+\subsubsection{结论与反例：以直径为直径的圆能否覆盖定位区域}
+
+\paragraph{结论}
+
+\[
+\boxed{\text{一般不能。}}
+\]
+
+精确定量结论需引入最小覆盖圆半径
+\begin{equation}
+R_{\MEC}(K)=\min_C\max_{P\in K}|C-P| .
+\end{equation}
+
+\begin{theorem}\label{thm:mec}
+设 $\diam K=D$，则
+\begin{equation}
+\frac D2
+\le
+R_{\MEC}(K)
+\le
+\frac{D}{\sqrt3},
+\tag{6}
+\end{equation}
+且
+\begin{equation}
+\text{存在直径 }D\text{ 的圆覆盖 }K
+\iff
+2R_{\MEC}(K)=D .
+\tag{7}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+左端：$K$ 中有一对距离为 $D$ 的点，
+任何覆盖圆的半径必 $\ge D/2$。
+
+右端：由容斥（Jung）定理，
+直径 $D$ 的集合可被半径 $D/\sqrt3$ 的圆覆盖
+（平面情形的最优常数）。
+
+式~(7)：$R_{\MEC}\ge D/2$ 给出
+$2R_{\MEC}\ge D$，故“直径 $D$ 的圆可覆盖”等价于
+$2R_{\MEC}\le D$，结合 $\ge$ 得 $=$。
+\end{proof}
+
+对内部非空的二维凸集，
+$2R_{\MEC}>D$ 通常严格成立，
+故\textbf{以定位区域直径 $D$ 为直径的圆不能覆盖该区域}；
+可行的最小覆盖圆直径是
+\[
+2R_{\MEC}
+\in
+\Bigl[
+D,\ \tfrac{2}{\sqrt3}D
+\Bigr].
+\]
+
+\paragraph{反例：等边三角形（凸集）}
+
+取 $K$ 为边长 $D$ 的等边三角形。
+
+\begin{enumerate}
+
+\item \textbf{直径}：三边均长 $D$，故 $\diam K=D$。
+
+\item \textbf{中点圆不覆盖}：取实现直径的一对顶点 $A,B$，
+令 $M=(A+B)/2$，第三顶点为 $P$。
+等边三角形中
+\[
+|MA|=|MB|=\frac D2,
+\qquad
+|MP|=\frac{\sqrt3}{2}D>\frac D2 ,
+\]
+故
+$K\not\subset B\bigl(M,\tfrac D2\bigr)$。
+
+\item \textbf{任何同直径圆都不覆盖}：
+等边三角形的外接圆即其最小覆盖圆，
+半径 $\dfrac{D}{\sqrt3}$，于是
+\[
+2R_{\MEC}
+=
+\frac{2}{\sqrt3}D
+\approx1.1547\,D>D ,
+\]
+由式~(7) 得否定结论。
+
+\item \textbf{紧性}：
+$\dfrac{2R_{\MEC}}{D}=\dfrac{2}{\sqrt3}$
+恰为常数上界（等边三角形取到）；
+而细长平行四边形可使该比值任意接近 $1$，
+故 $D$ 与 $2R_{\MEC}$ 之间无更好的普适关系。
+
+\end{enumerate}
+
+\begin{remark}
+等边三角形是凸集，与“定位区域为凸多边形”的语境完全相容，
+故该反例有效。
+\end{remark}
+
+\paragraph{模型层面的注记}
+
+若题目本意是“\textbf{给定圆心}（如取区域形心或直径端点中点）、
+以区域直径为直径”，则结论同样为否定。
+
+事实上，对任意点 $M$，取实现直径的 $A,B$ 与任一点 $P\in K$，
+由 $|MA|=|MB|=D/2$ 且 $|AP|,|BP|\le D$，
+利用平行四边形恒等式
+\[
+|MP|^2
+=
+\frac{|AP|^2+|BP|^2}{2}
+-\frac{|AB|^2}{4}
+\le
+\frac{D^2+D^2}{2}
+-\frac{D^2}{4}
+=
+\frac34D^2,
+\]
+得 $|MP|\le\dfrac{\sqrt3}{2}D$，
+该上界仍严格大于 $D/2$。
+
+故任何“圆心约定 $+$ 直径为 $D$”的方案都不能保证覆盖；
+\textbf{正确做法是报告最小覆盖圆直径 $2R_{\MEC}$
+（或以其作为搜索域尺度）}。
+
+\subsubsection{推导链与结论一览}
+
+% [H] 是 float 宏包提供的“强制固定在此处”选项（不浮动），
+% 保证表格紧跟本节标题输出，而不是被 LaTeX 浮动到别处。
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{>{\bfseries}lll}
+\toprule
+步骤 & 结论 & 依据 \\
+\midrule
+1. 建模 &
+$\mathcal R=\bigcap_i
+\{\lvert\wrap(\argvec(P-S_i)-\theta_i)\rvert\le\tau\}$，
+$G\in\mathcal R$ &
+定义、命题 \\
+
+2. 线性化 &
+$\mathcal R=\bigcap_i
+\{n_i^{\pm}\cdot P\le n_i^{\pm}\cdot A_i\}$：
+闭凸多边形 &
+引理、推论 \\
+
+3. 可解性 &
+有界 $\iff\alpha(\Theta)>2\tau$；
+$n=2$ 时 $\iff\Delta\theta>2^\circ$ &
+引理、定理、推论 \\
+
+4. 直径 &
+$D=\max_\rho w(\rho)
+=\max_{i<j}|V_i-V_j|$，
+$O(n^2)$（或 $O(n)$ 卡壳） &
+定理 \\
+
+5. 问题一的第二部分 &
+\textbf{不能覆盖}；
+$D\le2R_{\MEC}\le\frac{2}{\sqrt3}D$，
+反例为等边三角形 &
+定理 + 反例 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\subsection{问题二}
+
 \section{模型的评价、改进与推广}
 \section{AI工具使用声明}
 本参赛队在竞赛过程中使用了 AI 工具，
 主要用于【简要用途，如语言润色、代码调试等】，详细使用情况
 见支撑材料。
-\section{参考文献与引用}
-参考文献对于一篇正式的论文来说是必不可少的，在建模中重要的参考文献当然应该列出。\LaTeX{}在这方面的功能也是十分强大的，下面进介绍一个比较简单的参考文献制作方法。有兴趣的可以学习 \verb|bibtex| 或 \verb|biblatex| 的使用。
 
+% 注意：下方 thebibliography 会自动生成"参考文献"标题并加入目录，
+% 因此这里不要再手动 \section 一个"参考文献"标题，否则会重复。
 \LaTeX{}的入门书籍可以看《\LaTeX{}入门》\cite{liuhaiyang2013latex}。这是一个简单的引用，用 \verb|\cite{bibkey}| 来完成。要引用成功，当然要维护好 bibitem 了。下面是个简单的例子。
-
-
 
 %参考文献
 \begin{thebibliography}{9}%宽度9，表示标签（Label）的最大宽度预留
