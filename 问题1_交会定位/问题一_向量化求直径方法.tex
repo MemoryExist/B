@@ -1,0 +1,133 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper]{ctexart}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[hidelinks]{hyperref}
+
+\geometry{left=2.2cm,right=2.2cm,top=2.4cm,bottom=2.4cm}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 1pt}
+
+\newtheorem{theorem}{定理}
+
+\title{\bfseries 问题一求直径：向量化暴力法\\（原理、公式与优越性）}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2.2em}
+
+\section{问题一计算直径的公式}
+
+\textbf{输入}：$n$ 个检测点，坐标 $S_i=(x_i,y_i)$，示向度（方位角）$\theta_i$，测向误差界
+$\tau=1^\circ$。
+
+\subsection{第 1 步：每个检测点生成楔形（两条半平面）}
+
+每个 $S_i$ 确定张角 $2\tau$ 的视界楔形 $W_i$，等价于两条半平面之交：
+\begin{equation}
+W_i=\bigl\{P:\ n_{i,1}\cdot P\le n_{i,1}\cdot S_i\ \text{且}\ n_{i,2}\cdot P\le n_{i,2}\cdot S_i\bigr\},
+\end{equation}
+其中两条边界的外法向为
+\begin{equation}
+n_{i,1}=\bigl(\sin(\theta_i-\tau),\ -\cos(\theta_i-\tau)\bigr),\qquad
+n_{i,2}=\bigl(-\sin(\theta_i+\tau),\ \cos(\theta_i+\tau)\bigr).
+\end{equation}
+
+\subsection{第 2 步：求交会定位区域}
+
+\begin{equation}
+\mathcal R=\bigcap_{i=1}^{n}W_i,
+\end{equation}
+这是 $2n$ 条半平面之交，是凸多边形，用半平面求交得到顶点 $V_1,V_2,\dots,V_m$（$m\le 2n$）。
+
+\subsection{第 3 步：直径公式}
+
+\begin{theorem}[凸多边形直径]
+凸多边形 $\mathcal R$ 的直径等于其顶点对距离的最大值：
+\begin{equation}
+D=\max_{1\le i<j\le m}\lVert V_i-V_j\rVert
+=\sqrt{\max_{i,j}\Bigl[(x_{V_i}-x_{V_j})^2+(y_{V_i}-y_{V_j})^2\Bigr]} .
+\tag{D}
+\end{equation}
+\end{theorem}
+
+整条计算链为
+\begin{equation}
+\text{点坐标+示向度}\ \xrightarrow{\text{楔形半平面}}\ \text{凸多边形顶点}\ V\ \xrightarrow{\text{顶点对最大距离}}\ \text{直径}\ D .
+\end{equation}
+
+\section{向量化暴力法的原理}
+
+\subsection{单个多边形：顶点对最大距离，$O(m^2)$ 已足够}
+
+式~(D) 是纯矩阵运算，可写成无循环形式。设顶点矩阵 $H\in\mathbb R^{m\times2}$，所有顶点对的
+坐标差矩阵为
+\begin{equation}
+\Delta x_{ij}=x_i-x_j,\qquad \Delta y_{ij}=y_i-y_j\qquad (i,j=1,\dots,m),
+\end{equation}
+则
+\begin{equation}
+D=\sqrt{\max_{i,j}\bigl(\Delta x_{ij}^2+\Delta y_{ij}^2\bigr)} .
+\end{equation}
+其中 $\Delta x,\Delta y$ 是 $m\times m$ 矩阵，用 MATLAB 隐式扩展一次生成：
+\begin{equation}
+\Delta x = H(:,1)-H(:,1)^{\top},\qquad \Delta y = H(:,2)-H(:,2)^{\top} .
+\end{equation}
+顶点数 $m$ 很小（本题 $4\!-\!20$），$m^2$ 次运算可忽略，\textbf{单个多边形无需旋转卡壳}。
+
+\subsection{很多多边形：把独立计算交给三维广播}
+
+设要算 $P$ 个多边形，第 $p$ 个的直径为
+\begin{equation}
+D^{(p)}=\sqrt{\max_{i,j}\Bigl[\bigl(x_i^{(p)}-x_j^{(p)}\bigr)^2+\bigl(y_i^{(p)}-y_j^{(p)}\bigr)^2\Bigr]}.
+\end{equation}
+各 $p$ 之间完全独立、结构相同。把所有多边形堆成三维数组
+$\mathbf X\in\mathbb R^{m\times2\times P}$，其中 $\mathbf X(i,1,p)=x_i^{(p)}$，
+$\mathbf X(i,2,p)=y_i^{(p)}$。则“所有 $i,j,p$ 的 $x_i^{(p)}-x_j^{(p)}$”一次广播完成：
+\begin{equation}
+\Delta\mathbf x=\mathbf X(:,1,:)-\operatorname{permute}\bigl(\mathbf X(:,1,:),\,[2\ 1\ 3]\bigr),
+\end{equation}
+得到 $m\times m\times P$ 数组，第三维（多边形序号）自动广播。于是
+\begin{equation}
+D^{(p)}=\sqrt{\max_{i,j}\bigl(\Delta\mathbf x^2+\Delta\mathbf y^2\bigr)},
+\end{equation}
+最后沿 $i,j$ 两维取最大，一次性得到全部 $P$ 个直径。
+
+\textbf{核心思想}：把“对每个多边形的双层求最大”这个\textbf{可完全并行的矩阵运算}，交给
+MATLAB 底层用三维广播一次算完，\textbf{消灭逐多边形循环}。
+
+\section{优越性（对比旋转卡壳）}
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{>{\bfseries}p{3.2cm}p{5.4cm}p{5.4cm}}
+\toprule
+ & 向量化暴力法 & 旋转卡壳 \\
+\midrule
+单多边形复杂度 & $O(m^2)$ & $O(m)$ \\
+本题 $m$ 很小 & $m^2$ 可忽略，与 $O(m)$ 无实质差别 & 优势体现不出来 \\
+大量多边形 & 三维广播一次算完，无逐多边形循环 & 内部是顺序 \texttt{while}，\textbf{不可向量化} \\
+实现 & 3 行矩阵运算，无循环、无边界处理 & 对踵点推进、循环边界，易出细微错误 \\
+适用场景 & 本题“多而小” & 单个多边形且 $m>1000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+结论：
+
+\begin{itemize}
+\item 本题定位区域顶点少（$m\le 2n$），$O(m^2)$ 暴力法的单次开销可忽略；
+\item “很多多边形”的真正瓶颈是\textbf{逐多边形循环}，而非单多边形算法复杂度；
+\item 旋转卡壳是顺序算法，无法向量化，在 MATLAB 中反而不如“向量化暴力”快；
+\item 因此对本题，\textbf{向量化暴力法（顶点对最大距离 + 三维广播）}是最优做法。
+\end{itemize}
+
+\end{document}

@@ -1,5 +1,5 @@
 function [D, V, flag, AB] = position_diameter(S, theta)
-%POSITION_DIAMETER 问题1：交会定位区域直径（旋转卡壳求直径）
+%POSITION_DIAMETER 问题1：交会定位区域直径（向量化暴力求直径）
 %   [D, V, flag, AB] = position_diameter(S, theta)
 %
 %   输入（两项，均为用户输入）：
@@ -16,7 +16,7 @@ function [D, V, flag, AB] = position_diameter(S, theta)
 %       每个检测点 S_i 确定一个张角 2*tau 的视界楔形
 %           W_i = { P : |wrap(arg(P - S_i) - theta_i)| <= tau }
 %       定位区域 R = 所有楔形之交，是一个凸多边形；
-%       其直径 = 凸多边形顶点对距离的最大值（旋转卡壳 O(m) 求得）。
+%       其直径 = 凸多边形顶点对距离的最大值（向量化暴力法，无循环求得）。
 
     tau = 1;        % 测向误差界（度）
     M   = 10000;    % 裁剪用包围盒半边长（米），可自行调整
@@ -48,7 +48,7 @@ function [D, V, flag, AB] = position_diameter(S, theta)
     % ---- 3. 取凸包（去掉共线/重复点，得到规范凸多边形）----
     V = convex_hull(V);
 
-    % ---- 4. 旋转卡壳求直径 ----
+    % ---- 4. 向量化暴力求直径（顶点对最大距离，无循环）----
     [D, AB] = polygon_diameter(V);
 
     % ---- 5. 若区域触及包围盒，说明实际无界 ----
@@ -122,45 +122,26 @@ function H = convex_hull(P)
 end
 
 function [D, AB] = polygon_diameter(H)
-%POLYGON_DIAMETER 旋转卡壳求凸多边形直径 O(m)
+%POLYGON_DIAMETER 向量化暴力法求凸多边形直径（无循环）
 %   输入 H: 逆时针凸多边形顶点 (m×2)
 %   输出 D: 直径（米）；AB: 直径两端点 (2×2)
 %
-%   原理：凸多边形上任意两点距离的最大值（直径）必由一对“对踵点”取得；
-%   旋转卡壳沿凸包边推进对踵点，每步只移动 O(1)，总计 O(m)。
+%   原理：凸多边形直径 = 顶点对距离的最大值（问题一定理）。
+%   顶点数 m 很小，直接用隐式扩展一次性算出所有顶点对距离，全程无循环。
     m = size(H, 1);
     if m < 2
         D = 0; AB = zeros(0, 2); return;
     end
-    if m == 2
-        D = norm(H(1,:) - H(2,:)); AB = H; return;
-    end
 
-    D  = 0;
-    AB = [H(1,:); H(1,:)];
-    j  = 2;                            % 对踵点指针（1-based），从第 2 个顶点开始
-    for i = 1:m
-        ni = mod(i, m) + 1;            % 边 (i, ni) 的另一个端点
-        % 推进 j，直到三角形 (H(i),H(ni),H(j)) 面积最大，
-        % 即找到边 (i,ni) 的对踵点（面积函数在凸多边形上先增后减）
-        while tri_area(H, i, ni, mod(j, m) + 1) > tri_area(H, i, ni, j)
-            j = mod(j, m) + 1;
-        end
-        % 候选直径：边两端点 i、ni 分别到对踵点 j 的距离
-        d1 = norm(H(i,:)  - H(j,:));
-        if d1 > D
-            D = d1; AB = [H(i,:); H(j,:)];
-        end
-        d2 = norm(H(ni,:) - H(j,:));
-        if d2 > D
-            D = d2; AB = [H(ni,:); H(j,:)];
-        end
-    end
-end
+    % 所有顶点对的坐标差：m×m（利用 MATLAB 隐式扩展，无需双重循环）
+    dx = H(:,1) - H(:,1).';   % x_i - x_j
+    dy = H(:,2) - H(:,2).';   % y_i - y_j
+    D2 = dx.^2 + dy.^2;       % 所有顶点对平方距离
 
-function a = tri_area(H, i, j, k)
-% 三角形 (H(i),H(j),H(k)) 面积的两倍（叉积绝对值）
-    a = abs(cross2(H(j,:) - H(i,:), H(k,:) - H(i,:)));
+    [D2max, idx] = max(D2(:));          % 最大平方距离及其线性索引
+    [i, j] = ind2sub([m m], idx);       % 对应顶点对
+    D  = sqrt(D2max);
+    AB = [H(i,:); H(j,:)];
 end
 
 function [flag, arc] = boundedness(theta, tau)
