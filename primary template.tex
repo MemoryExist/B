@@ -1,0 +1,416 @@
+﻿%!TEX program = xelatex
+% 1. 文档类必须放在最顶端（最第一行）
+\documentclass[withoutpreface,bwprint]{cumcmthesis} % 已加选项，隐藏承诺书和编号页
+
+% 2. 引入宏包（必须放在 \documentclass 之后）
+% 注意：cumcmthesis.cls 已自动加载 ctex、amsmath、amssymb、amsthm 的等价内容、
+% url、subcaption、float、cleveref 等宏包，切勿重复加载（会导致报错）。
+\usepackage[framemethod=TikZ]{mdframed}
+
+% 问题一推导中使用的数学记号
+% 注意：theorem/lemma/corollary/definition/proof 等定理环境已由
+% cumcmthesis.cls 用中文名定义好，切勿再用 \newtheorem 重复定义，
+% 否则会报 "Command \theorem already defined" 以及一连串
+% "No counter '定理' defined" 错误。
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\argvec}{\arg}
+\newcommand{\diam}{\operatorname{diam}}
+\newcommand{\wrap}{\operatorname{wrap}}
+\newcommand{\MEC}{\operatorname{MEC}}
+
+% 文档类未预定义的定理环境（命题、注记）
+% 注意：类文件并未加载 amsthm，故此处不能用 \theoremstyle（会报未定义），
+% 直接用 \newtheorem 默认样式即可。
+\newtheorem{proposition}{命题}
+\newtheorem{remark}{注记}
+
+% 3. 填写你的论文信息
+\title{全国大学生数学建模竞赛论文题目} % 此处修改为你的实际论文题目
+\tihao{B}
+\baominghao{4321}
+\schoolname{武汉大学}
+\membera{刘泽}
+\memberb{贾皓宇}
+\memberc{陈宋欣}
+\supervisor{}
+\yearinput{2026}
+\monthinput{08}
+\dayinput{01}
+
+% 4. 正文开始（全篇只保留这唯一一个 \begin{document}）
+\begin{document}
+
+\maketitle % 生成标题
+
+\begin{abstract}
+这里是全国大学生数学建模竞赛论文的展示，我接下来要通过\textbf{贪心算法}来解释，接下来你会看到很多内容。
+
+\textbf{针对问题一：}首先简要介绍\textbf{工作原理}，以中心点为坐标坐标系。
+
+\keywords{多边形覆盖\quad\textbf{线性拟合} \quad 流程图}
+\end{abstract}
+
+\tableofcontents % 目录
+
+\section{问题的重述}
+\subsection{问题的背景}
+无线电是科技信息时代的重要工具，广泛应用于新闻通讯、商业交互、军事联络等诸多领域。
+无线电干扰会影响通信设备及无线电系统的正常运行，快速定位并清除干扰源是频谱管理中的重要任务。
+传统方法分为初步监测、区域性排查、精准定位三阶段，其中可依据固定监测站、移动监测车或无人机进行大范围初筛，
+但精确定位主要依靠人工携带测向设备在目标区域内逐步排查，效率较低，且在危险环境下存在安全隐患。
+
+某公司拟研发一个搭载于机器狗的干扰源自动定位清除系统，通过利用测向设备获取信号场强及方向等信息，自主搜索并定位干扰源。
+已知干扰源位于以原点为圆心、半径1800 m的圆形区域内，数量和具体位置均未知。以正东方向为x正半轴，正北方向为y轴正半轴建立平面直角坐标系。
+\subsection{问题的提出}
+\textbf{问题1：} 目前存在坐标已知的若干检测点，且已知某干扰源关于这些检测点的示向度，以及用来确定位置的交会定位法。
+需建立算法计算出多边形定位区域的直径，并判断以此为直径的圆是否可以覆盖此定位区域。
+
+\textbf{问题2：} 已知某一个全方向发出信号的干扰源及其在一检测点的示向度，
+应建立数学模型确定第二个检测点的最优坐标范围。
+
+\textbf{问题3：}在未知具体数目（10-16个）的干扰源全方向发出干扰信号的情境下，
+配备干扰源自动定位清除系统的机器狗初始位置
+在原点，测向机初始频道为1，
+求任务用时最短的策略及算法，并以“被清除干扰源个数的比例”和“平均定位清除时间”为评价标准，
+在模拟器的演练测试计算检验策略有效性。
+
+\textbf{问题4：}在问题3的基础上，未知具体数目（10-16个）的干扰源包含全向或定向（定向方向两侧各90°）两种类别，
+现在仍然求出检测与清除的策略与算法并检验有效性。
+\section{模型的假设}
+1.假设不考虑信号接收源的示位偏差。
+
+2.假设干扰源的信号强度在各个方向上均匀分布。
+\section{符号说明}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{cll}
+\toprule
+符号 & 含义 & 单位 \\
+\midrule
+$S_i$ & 第 $i$ 个检测点坐标 & m \\
+$\theta_i$ & 第 $i$ 个检测点的示向度 & $^\circ$ \\
+$\tau$ & 测向误差界 & $^\circ$ \\
+$\mathcal R$ & 交会定位区域 & --- \\
+$D$ & 定位区域的直径 & m \\
+$R_{\MEC}$ & 最小覆盖圆半径 & m \\
+\bottomrule
+\end{tabular}
+\end{table}
+\section{问题分析}
+\subsection{问题一分析}
+首先规定相交区域，
+其次证明它是闭凸多边形，
+接着关于其有界性证明，
+最后证明距离的最大值在对角处取到。
+\section{模型的建立与求解}
+\subsection{问题一：交会定位区域及其直径的数学模型与求解}
+\subsubsection{交会定位区域的建立}
+设共有 $n$ 个检测点，其坐标分别为 $S_i=(x_i,y_i)$，$i=1,2,\ldots,n$。
+对应测得的示向度为 $\theta_i\in[0^\circ,360^\circ)$。根据附录2，测向机的示向度与干扰源真实方位角之间的误差绝对值不超过 $\tau=1^\circ$。
+设干扰源真实位置为 $G$，则在第 $i$ 个检测点处，其真实方位角 $\beta_i=\arg(G-S_i)$
+满足
+$\beta_i=\arg(G-S_i)$ 满足
+$\left|\operatorname{wrap}(\beta_i-\theta_i)\right|\leq \tau$。
+其中偏差的取值通过
+\[
+\operatorname{wrap}(x) = x-360^\circ \left\lfloor\frac{x+180^\circ}{360^\circ}\right\rfloor .
+\]
+统一折算到 $(-180^\circ,180^\circ]$ 区间内，以避免角度周期性带来的误判。
+由此，仅利用第 $i$ 个检测点的测量结果，就可以把关：干扰源一定落在以 $S_i$ 为顶点、以 $\theta_i-\tau$ 和 $\theta_i+\tau$ 为两条边界射线的角形区域内。我们把这块区域记为第 $i$ 个检测点的视界楔形
+\begin{equation}
+W_i= \left\{ P: P=S_i \ \text{或}\ \left|\operatorname{wrap} \bigl(\arg(P-S_i)-\theta_i\bigr)\right| \leq\tau \right\}.
+\end{equation}
+由于干扰源的真实位置只有一个，它必须同时落进每一个检测点开出的这块“视野”里，把两者取交集，就得到交会定位区域
+\begin{equation}
+\boxed{ \mathcal R=\bigcap_{i=1}^n W_i }.
+\end{equation}
+回到题设，真实位置 $G$ 既然满足每个检测点的测向误差约束，自然有 $G\in W_i$（$i=1,\ldots,n$），
+于是立即可以得到
+\begin{equation}
+\boxed{ G\in\mathcal R }.
+\end{equation}
+也就是说，$\mathcal R$ 正是干扰源位置的理论可行域。
+
+\subsubsection{视界楔形的线性化表示}
+
+为了便于进一步计算定位区域的几何性质，对每一个检测点建立局部正交坐标系。定义
+\begin{equation}
+u_i=(\cos\theta_i,\sin\theta_i),\qquad v_i=(-\sin\theta_i,\cos\theta_i),
+\end{equation}
+其中 $u_i$ 为测得方向的单位向量，$v_i$ 为其逆时针旋转 $90^\circ$ 后的单位向量。
+
+对任意待测位置 $P$，记 $d=P-S_i$ ，再把它在这组局部基下拆开，即
+\begin{equation}
+d=\xi_i u_i+\eta_i v_i,
+\end{equation}
+其中 $\xi_i=d\cdot u_i$，$\eta_i=d\cdot v_i$。
+这里，$\xi_i$ 表示点 $P$ 沿示向度方向的纵向距离，$\eta_i$ 表示偏离示向度方向的横向距离。当 $d\neq0$ 且 $\xi_i>0$ 时，方位角和 $(\xi_i,\eta_i)$ 之间有
+\begin{equation}
+\arg(d)-\theta_i = \arctan\frac{\eta_i}{\xi_i}.
+\end{equation}
+两边取绝对值，测向误差约束就化成了对横向与纵向距离之比的限制
+\begin{equation}
+\left|\arg(d)-\theta_i\right|\leq\tau \iff \left|\frac{\eta_i}{\xi_i}\right| \leq\tan\tau.
+\end{equation}
+再把目标一定位于检测点前方这一条件 $\xi_i\geq0$ 一并纳入，整理后可得
+\begin{equation}
+\boxed{ W_i= \left\{ S_i+\xi u_i+\eta v_i: \xi\geq0,\; |\eta|\leq\xi\tan\tau \right\}. }
+\end{equation}
+进一步地，$|\eta_i|\leq\xi_i\tan\tau$ 等价于
+\[
+\eta_i\leq\xi_i\tan\tau, \qquad -\eta_i\leq\xi_i\tan\tau.
+\]
+由于 $\xi_i$ 和 $\eta_i$ 均为位置坐标 $P=(x,y)$ 的线性函数，因此上面这两个条件都可以直接写成半平面不等式的形式。
+
+具体地，令
+\begin{equation}
+e_i^\pm= \left( \cos(\theta_i\pm\tau), \sin(\theta_i\pm\tau) \right),
+\end{equation}
+则楔形两条边界射线分别为
+\[
+S_i+t e_i^\pm,\qquad t\geq0.
+\]
+这两条边界所在直线的交点，即楔顶，为
+\begin{equation}
+A_i = S_i+\frac{1}{\cos\tau}u_i.
+\end{equation}
+定义单位法向量
+\[
+n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
+\]
+则视界楔形可表示为两个半平面的交：
+\begin{equation}
+\boxed{ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdot P\leq n_i^-\cdot A_i \right\}. }
+\end{equation}
+因此，交会定位区域可以进一步表示为
+\begin{equation}
+\boxed{ \mathcal R = \bigcap_{j=1}^{2n} \left\{ P:n_j\cdot P\leq c_j \right\}. }
+\end{equation}
+由有限个闭半平面的交仍为闭凸集，故 $\mathcal R$ 是闭凸区域；当其有界时，$\mathcal R$ 即为一个凸多边形，且边界至多包含 $2n$ 条边。
+
+\subsubsection{定位区域有界性的判定}
+
+由于测向误差的存在，当各检测点的示向度过于接近时，多个视界楔形可能存在共同的延伸方向，使得交会定位区域向无穷远处扩张。因此，在动手算直径之前，我们得先弄明白 $\mathcal R$ 到底会不会有界。
+
+设非零向量 $\xi$ 是 $\mathcal R$ 的一个逃逸方向，即沿着它一直走都出不了区域：存在 $P_0\in\mathcal R$，使得 $P_0+t\xi\in\mathcal R$（$t\geq0$）。
+对于第 $i$ 个视界楔形来说，它能无限延伸的方向，恰好是那些与示向度 $\theta_i$ 夹角不超过 $\tau$ 的方向，即
+\begin{equation}
+\left| \operatorname{wrap} \left( \theta_i-\arg\xi \right) \right| \leq\tau
+\end{equation}
+换言之，$\mathcal R$ 存在非零逃逸方向，等价于**存在**某个方向 $\varphi$，把所有检测点的示向度都“罩住”：
+\[
+\left| \operatorname{wrap}(\theta_i-\varphi) \right| \leq\tau, \qquad i=1,\ldots,n.
+\]
+把各个示向度看成单位圆周上的点，上述条件正好对应“它们能被一条长度为 $2\tau$ 的弧覆盖”。为定量描述，定义这些方向点的最小包围弧长度
+\begin{equation}
+\alpha(\Theta) = 360^\circ- \max_k \left( \theta_{(k+1)}-\theta_{(k)} \right)_{360},
+\end{equation}
+其中 $\theta_{(k)}$ 为示向度升序排列后的结果，下标按圆周循环，$(\cdot)_{360}$ 表示模 $360^\circ$ 后落入 $[0^\circ,360^\circ)$ 的环间隔。
+
+这样一来，判据就很直接了：若所有示向度都能塞进某条长度为 $2\tau$ 的弧里，就存在共同逃逸方向，定位区域无界；反过来，只要最小包围弧长度超过 $2\tau$，就找不到共同逃逸方向，区域必然有界。于是得到有界性判据
+\begin{equation}
+\boxed{ \mathcal R\ \text{有界} \iff \alpha(\Theta)>2\tau. }
+\end{equation}
+退化到只有两个检测点的情形，先算出两示向度的最小夹角
+\begin{equation}
+\Delta\theta = \left| \operatorname{wrap}(\theta_2-\theta_1) \right| <180^\circ.
+\end{equation}
+此时显然有 $\alpha(\Theta)=\Delta\theta$，代入上面的判据，立刻得到
+\begin{equation}
+\boxed{ \mathcal R\ \text{有界} \iff \Delta\theta>2\tau=2^\circ. }
+\end{equation}
+也就是说，当两个检测点观测到的方向夹角不超过 $2^\circ$ 时，交会区域可能沿共同方向无限延伸，不能直接定义有限直径。遇到这种情况，就再叠加题目给出的物理范围（例如目标区域 $|P|\leq1800\ \text{m}$）或有效接收距离约束，给定位区域补上有界化条件。
+
+\subsubsection{定位区域直径的计算}
+
+既然知道了 $\mathcal R$ 何时有界，当上述有界性条件成立时它就是紧凸多边形，直径自然有定义，即
+\begin{equation}
+\boxed{ D=\operatorname{diam}\mathcal R = \max_{P,Q\in\mathcal R}|P-Q|. }
+\end{equation}
+不过直接对区域上所有点对求最大距离并不好算。我们换个思路：先引入“宽度”。对任意单位向量 $\rho$，定义区域在方向 $\rho$ 上的宽度为
+\begin{equation}
+w(\rho) = \max_{P\in\mathcal R}\rho\cdot P - \min_{P\in\mathcal R}\rho\cdot P.
+\end{equation}
+对任意 $P,Q\in\mathcal R$，由柯西--施瓦茨不等式有 $\rho\cdot(P-Q) \leq |P-Q|$，故 $w(\rho)\leq D$，也就是说任何方向的宽度都不会超过直径。
+反过来，设 $P^*,Q^*$ 为一对真正实现直径的点，即 $|P^*-Q^*|=D$，只要取 $\rho^* = \dfrac{P^*-Q^*}{D}$，就有
+\[
+w(\rho^*) \geq \rho^*\cdot(P^*-Q^*) = D.
+\]
+两边合起来，宽度与直径便恰好吻合：
+\begin{equation}
+\boxed{ D=\max_{\|\rho\|=1}w(\rho). }
+\end{equation}
+既然 $\mathcal R$ 是凸多边形，还可以把上面这个连续优化进一步压成有限个顶点对的比较。设 $\mathcal R$ 的顶点按逆时针方向排列为 $V_1,V_2,\ldots,V_m$。
+固定任意 $Q\in\mathcal R$，函数 $f(P)=|P-Q|$ 关于 $P$ 为凸函数。若 $P$ 落在某条边的内部，可将其写成该边两个端点的凸组合，于是由三角不等式，至少有一个端点到 $Q$ 的距离不小于 $P$ 到 $Q$ 的距离。这说明最大值一定能在顶点处取到。对 $Q$ 同理可得
+\begin{equation}
+\boxed{ D= \max_{1\leq i<j\leq m}|V_i-V_j|. }
+\end{equation}
+于是，问题一中定位区域直径的计算可以归纳为以下步骤：
+\begin{enumerate}
+\item 根据每个检测点的坐标 $S_i$、示向度 $\theta_i$ 和误差界 $\tau$，建立两个半平面约束，共得到至多 $2n$ 个半平面；
+\item 对这些半平面进行求交，获得定位区域 $\mathcal R$ 的顶点 $V_1,\ldots,V_m$（$m\leq2n$）；
+\item 枚举任意两个顶点，计算 $d_{ij}=|V_i-V_j|$，取最大值作为定位区域直径
+\begin{equation}
+D=\max_{i<j}d_{ij}.
+\end{equation}
+\end{enumerate}
+若直接枚举顶点对，直径计算的复杂度为 $O(m^2)$，再代入 $m\leq2n$，可进一步写为 $O(n^2)$。
+当顶点已按凸多边形边界顺序排列时，也可以进一步利用旋转卡壳算法将直径计算降至 $O(m)$。
+
+\subsubsection{以定位区域直径为直径的圆能否覆盖定位区域}
+
+问题一的第二部分要回答的是：以定位区域直径 $D$ 为直径的圆，是否一定能把整个定位区域罩住？
+
+为此先引入集合 $K$ 的最小覆盖圆半径
+\begin{equation}
+R_{\mathrm{MEC}}(K) = \min_C\max_{P\in K}|C-P|.
+\end{equation}
+它衡量的是“用圆罩住 $K$ 所需的最小代价”。注意到区域直径为 $D$，就意味着存在一对点 $A,B\in K$ 满足 $|A-B|=D$。
+现在任取一个能覆盖 $K$ 的圆，设圆心为 $C$、半径为 $R$，由三角不等式直接得到
+\begin{equation}
+D = |A-B| \leq |A-C|+|C-B| \leq2R.
+\end{equation}
+也就是说，任何覆盖圆的半径都逃不过 $D/2$ 这个下界，故
+\begin{equation}
+\boxed{ R_{\mathrm{MEC}}(K)\geq\frac D2. }
+\end{equation}
+但这里要特别注意，上式一般不能取等号，也就不能保证存在一个直径恰好为 $D$ 的圆罩住整个区域。为了说明这一点，可以取边长为 $D$ 的等边三角形作为反例：它的直径确实是 $\operatorname{diam}K=D$，可它的最小覆盖圆是外接圆，半径
+\[
+R_{\mathrm{MEC}}(K)=\frac D{\sqrt3}.
+\]
+于是 $2R_{\mathrm{MEC}}(K) = \dfrac{2}{\sqrt3}D >D$。这恰好说明：
+\begin{equation}
+\boxed{ \text{以定位区域直径 }D\text{ 为直径的圆一般不能覆盖整个定位区域。} }
+\end{equation}
+再进一步，由平面上的 Jung 定理，任意直径为 $D$ 的有界集合都满足
+\begin{equation}
+\frac D2 \leq R_{\mathrm{MEC}}(K) \leq \frac D{\sqrt3},
+\end{equation}
+把这个夹逼关系两端同乘以 $2$，就得到
+\begin{equation}
+\boxed{ D \leq 2R_{\mathrm{MEC}}(K) \leq \frac{2}{\sqrt3}D. }
+\end{equation}
+其中等边三角形达到上界。因此，如果需要构造能够保证覆盖整个定位区域的圆形搜索域，其严格的尺度应采用最小覆盖圆直径 $2R_{\mathrm{MEC}}$，而不能简单地将定位区域直径 $D$ 直接作为圆的直径。
+
+\subsubsection{问题一求解流程总结}
+
+综合上述分析，问题一的求解流程可以形象地串成一条链：
+\begin{equation}
+\boxed{ \text{测向误差模型} \rightarrow \text{视界楔形} \rightarrow \text{半平面表示} \rightarrow \text{凸定位区域} \rightarrow \text{有界性判定} \rightarrow \text{半平面求交} \rightarrow \text{顶点集合} \rightarrow \text{顶点对最大距离} }.
+\end{equation}
+具体而言，首先根据测向机的 $\pm1^\circ$ 测向误差建立各检测点的视界楔形；随后将楔形转换为两个半平面约束，从而得到凸定位区域；再通过示向度最小包围弧判断定位区域是否有界；当定位区域为有界凸多边形时，利用半平面求交得到其全部顶点，并由凸集上的极值性质得到区域直径
+\begin{equation}
+\boxed{ D=\max_{i<j}|V_i-V_j|. }
+\end{equation}
+最后，通过最小覆盖圆理论可知，直径为 $D$ 的圆一般不能保证覆盖定位区域，因此实际搜索时应采用最小覆盖圆或其他能够保证覆盖的搜索域尺度。
+\subsection{问题二}
+
+\section{模型的评价、改进与推广}
+\section{AI工具使用声明}
+本参赛队在竞赛过程中使用了 AI 工具，
+主要用于【简要用途，如语言润色、代码调试等】，详细使用情况
+见支撑材料。
+
+% 注意：下方 thebibliography 会自动生成"参考文献"标题并加入目录，
+% 因此这里不要再手动 \section 一个"参考文献"标题，否则会重复。
+\LaTeX{}的入门书籍可以看《\LaTeX{}入门》\cite{liuhaiyang2013latex}。这是一个简单的引用，用 \verb|\cite{bibkey}| 来完成。要引用成功，当然要维护好 bibitem 了。下面是个简单的例子。
+
+%参考文献
+\begin{thebibliography}{9}%宽度9，表示标签（Label）的最大宽度预留
+    \bibitem[1]{liuhaiyang2013latex}
+    刘海洋.
+    \newblock \LaTeX {}入门\allowbreak[J].%允许在适当位置换行
+    \newblock 电子工业出版社, 北京, 2013.
+    \bibitem[2]{mathematical-modeling}
+    全国大学生数学建模竞赛论文格式规范 (2020 年 8 月 25 日修改).
+    \bibitem{3} \url{https://www.latexstudio.net}
+\end{thebibliography}
+
+\newpage
+%附录
+\begin{appendices}
+
+\section{模板所用的宏包}
+\begin{table}[htbp]
+    \centering
+    \caption{宏包罗列}
+    \begin{tabular}{ccccc}
+        \toprule
+        \multicolumn{5}{c}{模板中已经加载的宏包} \\
+        \midrule
+        amsbsy & amsfonts & {amsgen} & {amsmath} & {amsopn} \\
+        amssymb & amstext & {appendix} & {array} & {atbegshi} \\
+        atveryend & auxhook & {bigdelim} & {bigintcalc} & {bigstrut} \\
+        bitset & bm    & {booktabs} & {calc} & {caption} \\
+        caption3 & CJKfntef & {cprotect} & {ctex} & {ctexhook} \\
+        ctexpatch & enumitem & {etexcmds} & {etoolbox} & {everysel} \\
+        expl3 & fix-cm & {fontenc} & {fontspec} & {fontspec-xetex} \\
+        geometry & gettitlestring & {graphics} & {graphicx} & {hobsub} \\
+        hobsub-generic & hobsub-hyperref & {hopatch} & {hxetex} & {hycolor} \\
+        hyperref & ifluatex & {ifpdf} & {ifthen} & {ifvtex} \\
+        ifxetex & indentfirst & {infwarerr} & {intcalc} & {keyval} \\
+        kvdefinekeys & kvoptions & {kvsetkeys} & {l3keys2e} & {letltxmacro} \\
+        listings & longtable & {lstmisc} & {ltcaption} & {ltxcmds} \\
+        multirow & nameref & {pdfescape} & {pdftexcmds} & {refcount} \\
+        rerunfilecheck & stringenc & {suffix} & {titletoc} & {tocloft} \\
+        trig  & ulem  & {uniquecounter} & {url} & {xcolor} \\
+        xcolor-patch & xeCJK & {xeCJKfntef} & {xeCJK-listings} & {xparse} \\
+        xtemplate & zhnumber &       &       &  \\
+        \bottomrule
+    \end{tabular}%
+    \label{tab:addlabel}%
+\end{table}%
+
+以上宏包都已经加载过了，不要重复加载它们。
+
+\section{排队算法--matlab 源程序}
+
+\begin{lstlisting}[language=matlab]
+kk=2;[mdd,ndd]=size(dd);
+while ~isempty(V)
+[tmpd,j]=min(W(i,V));tmpj=V(j);
+for k=2:ndd
+[tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
+tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
+end
+tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
+if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
+else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
+if dd(2,tmp4)==ss(tmp6,tmp4)
+ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
+else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
+end;end
+dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
+[mdd,ndd]=size(dd);kk=kk+1;
+end; S=ss; D=dd(1,:);
+ \end{lstlisting}
+
+ \section{规划解决程序--lingo源代码}
+
+\begin{lstlisting}[language=c]
+kk=2;
+[mdd,ndd]=size(dd);
+while ~isempty(V)
+    [tmpd,j]=min(W(i,V));tmpj=V(j);
+for k=2:ndd
+    [tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
+    tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
+end
+    tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
+if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
+else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
+if dd(2,tmp4)==ss(tmp6,tmp4)
+    ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
+else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
+end;
+end
+    dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
+    [mdd,ndd]=size(dd);
+    kk=kk+1;
+end;
+S=ss;
+D=dd(1,:);
+ \end{lstlisting}
+\end{appendices}
+
+\end{document} 
