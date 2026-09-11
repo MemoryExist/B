@@ -41,4 +41,41 @@ for k=1:3
         labels{k},P(:,k),lower(k),upper(k),norm(P(:,k)));
 end
 fprintf(fid,'}\n');
+fprintf(fid,'\\newcommand{\\QNearCandidateRows}{%%\n');
+near_fines = out.fines(out.near_indices);
+for i = 1:numel(near_fines)
+    p = near_fines(i);
+    if out.near_indices(i) == out.selected_index
+        mark = ' (最佳推荐)';
+    else
+        mark = '';
+    end
+    fprintf(fid,'候选点 %d%s & $(%.2f,\\,%.2f)$ & $[%.3f,\\,%.3f]$ & %.2f \\\\\n', ...
+        i, mark, p.P(1), p.P(2), p.L, p.U, p.dist);
+end
+fprintf(fid,'}\n');
+
+% =========================================================================
+% 向控制台输出“较好观测点形成的区域”及选出的“最佳点”，供后续问题使用
+% =========================================================================
+fprintf('\n=================================================================\n');
+fprintf('【问题2：较好观测点区域及最佳点推荐 (供后续问题3/4使用)】\n');
+fprintf('根据精评结果，在允许精度让步 (tau = %.2fm) 范围内的较好观测点有 %d 个：\n', cfg.tau_m, numel(out.near_indices));
+
+% 打印在这个区域内的所有较好点
+near_fines = out.fines(out.near_indices);
+for i = 1:numel(near_fines)
+    p = near_fines(i);
+    if i == out.selected_index
+        fprintf(' => [最佳推荐/路程最短] 点位: (%7.2f, %7.2f) | 最坏误差半径: [%.2f, %.2f]m | 距起点: %.2fm\n', ...
+            p.P(1), p.P(2), p.L, p.U, p.dist);
+    else
+        fprintf('    - [较好候选点]       点位: (%7.2f, %7.2f) | 最坏误差半径: [%.2f, %.2f]m | 距起点: %.2fm\n', ...
+            p.P(1), p.P(2), p.L, p.U, p.dist);
+    end
+end
+fprintf('注：您可以将上述【最佳推荐】点的坐标，或其它【较好候选点】的坐标，\n');
+fprintf('    直接复制到后续问题 (如问题3或4) 的路径规划或策略代码中作为第二观测点。\n');
+fprintf('=================================================================\n');
+
 end
