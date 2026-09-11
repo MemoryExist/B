@@ -1,0 +1,9 @@
+results/
+figures/
+*.asv
+*.m~
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.xdv
