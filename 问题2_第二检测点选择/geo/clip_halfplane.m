@@ -1,33 +1,24 @@
-function poly = clip_halfplane(poly, n, c)
-%CLIP_HALFPLANE Sutherland-Hodgman 半平面裁剪: 保留 n'*x <= c 的部分
-%   输入/输出 poly: 2×m 顶点列(逆时针开链); n: 2×1 法向量; c: 标量
-%   空或退化(<3 顶点)返回 2×0
-if size(poly, 2) < 3
-    poly = zeros(2, 0);
+function Q=clip_halfplane(V,n,c)
+%CLIP_HALFPLANE 保留 n'*G<=c；点和线段也是有效的退化交集。
+Q=zeros(2,0);
+if isempty(V),return;end
+n=n(:);
+if size(V,2)==1
+    if n'*V<=c,Q=V;end
     return;
 end
-m = size(poly, 2);
-Q = zeros(2, m + 1);
-cnt = 0;
-prev = poly(:, m);
-dprev = n' * prev - c;
-for i = 1:m
-    cur = poly(:, i);
-    dcur = n' * cur - c;
-    if dprev <= 0
-        cnt = cnt + 1; Q(:, cnt) = prev;
-        if dcur > 0
-            t = dprev / (dprev - dcur);
-            cnt = cnt + 1; Q(:, cnt) = prev + t * (cur - prev);
-        end
-    elseif dcur <= 0
-        t = dprev / (dprev - dcur);
-        cnt = cnt + 1; Q(:, cnt) = prev + t * (cur - prev);
+m=size(V,2); Q=zeros(2,m+2); k=0;
+for i=1:m
+    a=V(:,i); b=V(:,mod(i,m)+1);
+    fa=n'*a-c; fb=n'*b-c;
+    if fa<=0,k=k+1;Q(:,k)=a;end
+    if (fa<=0)~=(fb<=0)
+        k=k+1;Q(:,k)=a+fa/(fa-fb)*(b-a);
     end
-    prev = cur; dprev = dcur;
 end
-poly = Q(:, 1:cnt);
-if cnt < 3
-    poly = zeros(2, 0);
+Q=Q(:,1:k);
+if size(Q,2)>1
+    Q=Q(:,[true,vecnorm(diff(Q,1,2),2,1)>1e-10]);
+    if size(Q,2)>1 && norm(Q(:,end)-Q(:,1))<=1e-10,Q(:,end)=[];end
 end
 end

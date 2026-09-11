@@ -1,90 +1,75 @@
 function res = eval_P_bounds(P, cfg, state)
-%EVAL_P_BOUNDS 固定第二检测点 P 的最坏定位半径 f1(P) 的上下界
-%   角度区间自适应细分:
-%     可行读数范围 Θ(P) 安全覆盖后分成角度箱 I_j=[β_j-η_j, β_j+η_j];
-%     箱上界: J_j^+ = D ∩ W(P, β_j; δ+η_j) 的外多边形近似覆盖半径 U_j
-%             (含区间内所有实际读数对应的定位区域, 故 max U_j ≥ f1(P));
-%     箱中点采样: J(β) 的内多边形近似覆盖半径 → 下界 L;
-%     另有点对下界与弦下界(理论下界)。每次细分上界最大的箱。
-%   终止: (1) U-L ≤ cfg.eval_tol; (2) L > cfg.kill_threshold(提前淘汰);
-%         (3) neval ≥ cfg.eval_budget(预算, 返回未收敛上下界与状态)。
-%   state: 上次状态(继续细分), 由缓存管理。
-%   返回 res: .L .U .Uw(最坏β处上界, 报告用) .worst_beta(rad) .neval
-%             .status('converged'|'budget'|'pruned'|'empty') .state .log .t .P
+%EVAL_P_BOUNDS 对固定 P 给出最坏包围半径的几何上下界，并支持继续细分。
+% 预算按包围圆计算次数计；初始化必须完整覆盖读数范围。
+P = P(:);
+if ~isfield(cfg, 'eval_tol'), cfg.eval_tol = cfg.tol_fine; end
+if ~isfield(cfg, 'eval_budget'), cfg.eval_budget = cfg.budget_fine; end
+if ~isfield(cfg, 'kill_threshold'), cfg.kill_threshold = inf; end
+if ~isfield(cfg, 'witness'), [~, cfg.witness] = D_region(cfg); end
+assert(cfg.eval_tol > 0 && cfg.eta0 > 0 && cfg.delta + cfg.eta0 < pi/2);
+signature = [P; cfg.delta; cfg.Lmax; cfg.r_inner; cfg.n_arc; cfg.n_crop; ...
+    cfg.n_hole_gon; cfg.hole_margin; cfg.crop_enabled; cfg.crop_center(:); cfg.crop_radius; ...
+    cfg.R0; cfg.mec_tol; cfg.mec_tol_rel];
 t0 = tic;
-if nargin < 3 || isempty(state)
-    [lo, hi, isfull] = theta_span_P(P, cfg);
-    if isfull
-        nb = round(2*pi / (2*cfg.eta0));
-        centers = cfg.eta0 + (0:nb-1) * (2*pi / nb);
-        hw = repmat(cfg.eta0, 1, nb);
-    else
-        w = hi - lo;
-        nb = max(1, ceil(w / (2*cfg.eta0)));
-        hw = repmat(w / (2*nb), 1, nb);
-        centers = lo + hw + (0:nb-1) * (2*hw(1));
-    end
+if nargin < 3 || isempty(state) || ~isequal(state.signature, signature)
+    [lo, hi] = theta_span_P(P, cfg);
+    nb = max(1, ceil((hi-lo)/(2*cfg.eta0)));
+    assert(cfg.eval_budget >= nb, '角度预算不足以覆盖初始角度区间。');
+    edges = linspace(lo, hi, nb+1);
+    centers = (edges(1:end-1)+edges(2:end))/2;
+    hw = diff(edges)/2;
     Ub = zeros(1, nb);
     for k = 1:nb
-        Ub(k) = region_mec(P, centers(k), cfg.delta + hw(k), 'outer', cfg);
+        Ub(k) = region_mec(P, centers(k), cfg.delta+hw(k), 'outer', cfg);
     end
-    neval = nb;
-    L = 0;
-    worst_beta = nan;
+    neval = nb; L = 0; sample_L = -inf; worst_beta = nan;
+    elapsed = 0;
+    logU = []; logL = []; logN = [];
 else
     centers = state.centers; hw = state.hw; Ub = state.Ub;
-    neval = state.neval; L = state.L; worst_beta = state.worst;
+    neval = state.neval; L = state.L;
+    sample_L = state.sample_L; worst_beta = state.worst;
+    elapsed = state.elapsed;
+    logU = state.log.U; logL = state.log.L; logN = state.log.n;
 end
-% 理论下界并入
-L = max(L, pair_lower_bound(P, cfg.witness, cfg));
-L = max(L, chord_lower_bound(P, cfg));
+L = max([L, pair_lower_bound(P, cfg.witness, cfg), chord_lower_bound(P, cfg)]);
 U = max(Ub);
-logU = U; logL = L; logN = neval;
-status = 'running';
-if L > cfg.kill_threshold
-    status = 'pruned';
-end
-while strcmp(status, 'running') && (U - L > cfg.eval_tol) && (neval < cfg.eval_budget)
-    [umax, k] = max(Ub);
-    if umax <= L + cfg.eval_tol
-        break;
+logU(end+1) = U; logL(end+1) = L; logN(end+1) = neval;
+while true
+    assert(L <= U+1e-5, '上下界矛盾，请检查几何或数值容差。');
+    if U-L <= cfg.eval_tol
+        status = 'converged'; break;
+    elseif L > cfg.kill_threshold
+        status = 'pruned'; break;
+    elseif neval+3 > cfg.eval_budget
+        status = 'budget'; break;
     end
-    bm = centers(k);
-    Lb = region_mec(P, bm, cfg.delta, 'inner', cfg);   % 箱中点: 可行读数下界
-    neval = neval + 1;
-    if Lb > L
-        L = Lb; worst_beta = bm;
+    [parentU, k] = max(Ub);
+    beta = centers(k);
+    lower = region_mec(P, beta, cfg.delta, 'inner', cfg);
+    neval = neval+1;
+    if lower > sample_L
+        sample_L = lower; worst_beta = beta;
     end
-    h1 = hw(k) / 2;
-    c1 = bm - h1; c2 = bm + h1;
-    U1 = region_mec(P, c1, cfg.delta + h1, 'outer', cfg);
-    U2 = region_mec(P, c2, cfg.delta + h1, 'outer', cfg);
-    centers(k) = c1; hw(k) = h1; Ub(k) = U1;
-    centers(end+1) = c2; hw(end+1) = h1; Ub(end+1) = U2; %#ok<AGROW>
-    neval = neval + 2;
-    U = max(Ub);
+    L = max(L, lower);
+    if L <= cfg.kill_threshold && U-L > cfg.eval_tol
+        h = hw(k)/2;
+        c1 = beta-h; c2 = beta+h;
+        u1 = region_mec(P, c1, cfg.delta+h, 'outer', cfg);
+        u2 = region_mec(P, c2, cfg.delta+h, 'outer', cfg);
+        % 父箱同样包含子箱，取二者较小上界可抑制舍入造成的回升。
+        centers(k) = c1; hw(k) = h; Ub(k) = min(parentU, u1);
+        centers(end+1) = c2; hw(end+1) = h; Ub(end+1) = min(parentU, u2); %#ok<AGROW>
+        neval = neval+2;
+        U = max(Ub);
+    end
     logU(end+1) = U; logL(end+1) = L; logN(end+1) = neval; %#ok<AGROW>
-    if L > cfg.kill_threshold
-        status = 'pruned';
-    end
 end
-if strcmp(status, 'running')
-    if U - L <= cfg.eval_tol
-        status = 'converged';
-    else
-        status = 'budget';
-    end
-end
-if isnan(worst_beta)
-    status = 'empty';
-end
-Uw = 0;
-if ~isnan(worst_beta)
-    Uw = region_mec(P, worst_beta, cfg.delta, 'outer', cfg);
-end
-res = struct('P', P, 'L', L, 'U', U, 'Uw', Uw, 'worst_beta', worst_beta, ...
-    'neval', neval, 'status', status, 't', toc(t0), ...
-    'log', struct('U', logU, 'L', logL, 'n', logN), ...
-    'state', struct('centers', centers, 'hw', hw, 'Ub', Ub, ...
-    'neval', neval, 'L', L, 'worst', worst_beta));
+history = struct('U', logU, 'L', logL, 'n', logN);
+elapsed = elapsed+toc(t0);
+state = struct('signature', signature, 'centers', centers, 'hw', hw, 'Ub', Ub, ...
+    'neval', neval, 'L', L, 'sample_L', sample_L, 'worst', worst_beta, ...
+    'elapsed', elapsed, 'log', history);
+res = struct('P', P, 'L', L, 'U', U, 'worst_beta', worst_beta, ...
+    'neval', neval, 'status', status, 't', elapsed, 'log', history, 'state', state);
 end

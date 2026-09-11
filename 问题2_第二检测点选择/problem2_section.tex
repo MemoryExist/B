@@ -1,226 +1,257 @@
-% =====================================================================
-\providecommand{\figpath}{figures/}
-% problem2_section.tex —— 问题二论文片段(可直接插入中文竞赛论文)
-% 使用: 竞赛模板中 \usepackage{amsmath,amssymb,graphicx,booktabs,caption}
-%       图文件位于 figures/ 目录, 路径按需调整
-% 数据来源: 全部由 results/*.csv 与本目录 MATLAB 程序实测生成, 见 README.md
-% =====================================================================
-\providecommand{\figpath}{figures/}
+% 依赖 amsmath, amssymb, graphicx, booktabs, float；先运行 main_problem2。
+% 合入总论文时，把 \qtwopath 设为本目录相对于总论文的路径（以 / 结尾）。
+\providecommand{\qtwopath}{}
+\input{\qtwopath results/problem2_numbers.tex}
 
-\section{问题二的模型建立与求解：第二个检测点的选择策略}
+\section{第二检测点的选择}
+\subsection{局部坐标与候选区域}
 
-\subsection{问题二的目标与局部坐标系}
+以首个检测点为原点，以首次测得的示向度为 $x$ 轴正向，建立局部坐标系。
+这只是平移与旋转，不要求首站位于目标圆域中心。
+设第二检测点为 $P=(x,y)$，干扰源为 $G=(u,v)$，误差半角为
+$\delta=1^\circ=\pi/180$。干扰源在两次观测之间保持不变。
 
-问题二要求：已知某全向干扰源在第一个检测点 $S_1$ 处测得的示向度，给出第二个检测点 $S_2$ 的选择策略，以获得关于该干扰源较好的定位效果，并给出第二个检测点的候选区域。
-
-我们建立以 $S_1$ 为原点、第一次\emph{实际示向度}方向为 $x$ 轴正方向的局部坐标系，单位取米。这是坐标变换而非假设 $S_1$ 位于目标圆域圆心：若给出 $S_1$ 的全局坐标与第一次示向度 $\theta_1$（全局方位角），任意局部坐标 $G$ 与全局坐标 $\tilde G$ 的转换为
+首次正常观测后，尚不能排除的源位置构成
 \begin{equation}
-  \tilde G = S_1 + R(\theta_1)\,G,\qquad
-  R(\theta)=\begin{pmatrix}\cos\theta & -\sin\theta\\ \sin\theta & \cos\theta\end{pmatrix}.
+D=\left\{(u,v):u\ge0,\ |v|\le u\tan\delta,\
+5<\sqrt{u^2+v^2}\le1500\right\}.
+\label{eq:q2D}
 \end{equation}
-在局部坐标系下，第一次示向度恒为 $0$，测向误差满足 $|\varepsilon|\le \delta$，其中 $\delta=1^\circ=\pi/180$。记干扰源位置为 $G=(u,v)$，第二检测点为 $P=(x,y)$，第二次实际示向度为 $\beta$（单位弧度，按圆周意义处理 $0/360^\circ$ 跨越）。
+若已知首站的全局位置及首次方向，还应将 $D$ 与变换后的目标圆域相交。
+下文数值实验采用完整扇区作为保守源域；即使目标圆域实际裁切了扇区，
+使用该较大源域仍不会漏掉可能的源位置。
 
-默认情形（本文全部数值实验的基准）：目标圆域在局部坐标下不裁切首次示向度扇形，即源可行域取“完整标准扇区”（§\ref{sec:DE}）。目标圆域参数在程序中作为可选输入保留（\texttt{crop\_enabled} 等参数），启用后所有几何量再与目标圆相交，且候选域退化为默认 $E$ 的安全子区域。
-
-\subsection{源可行域 $D$ 与保守安全候选域 $E$}\label{sec:DE}
-
-由题意：源的有效接收半径 $R$ 未知但满足 $1000\le R\le 1500$；$S_1$ 处已获得正常示向度，故源距 $S_1$ 在 $(5,1500]$ 内且 $|\arg G|\le\delta$；距检测点不超过 $5$ 米时有信号则无法获得正常示向度（转入光学定位清除分支）。因此标准情形的源可行域为
+为保证第二站接收到信号，利用有效接收半径至少为 $1000$ 米，
+选取保守候选区域
 \begin{equation}
-  D=\bigl\{G=(u,v):\ u\ge0,\ -u\tan\delta\le v\le u\tan\delta,\ 5<\sqrt{u^2+v^2}\le1500\bigr\}.
+\begin{aligned}
+E&=\left\{P:\sup_{G\in D}\|P-G\|\le1000\right\}\\
+&=\bigcap_{\substack{r\in\{5,1500\}\\s\in\{-1,1\}}}
+\left\{(x,y):(x-r\cos\delta)^2+(y-sr\sin\delta)^2\le1000^2\right\}.
+\end{aligned}
+\label{eq:q2E}
 \end{equation}
+四圆盘表达式的证明如下：四个端点属于 $D$ 的闭包，故圆盘约束必要。
+反之，满足四圆盘约束时，$x\ge1500\cos\delta-1000>0$。
+对固定半径的短圆弧，距离函数的内部驻点若存在只能是极小值，故最大值在两端；
+对固定方向，距离关于半径是凸函数，最大值也在两端。
+因此只需检验四个端点，且取源域闭包不改变上确界。
+启用目标圆域裁切后仍可沿用此 $E$，得到安全的候选子区域。
 
-要保证第二站 \emph{必然} 获得信号，需 $P$ 到任意可能源位置的距离都不超过有效接收半径的下界 $1000$，即
+\subsection{以最坏包围半径衡量精度}
+
+记 $W(P;\beta,\delta)$ 为顶点 $P$、中心方向 $\beta$、半角 $\delta$ 的前向楔形。
+正常读数 $\beta$ 对应的定位区域为
 \begin{equation}
-  E=\bigcap_{G\in D} B(G,1000)
-   =\bigl\{P:\ \|P-G\|\le1000,\ \forall G\in D\bigr\}.
+J(P,\beta)=D\cap W(P;\beta,\delta)\cap\{G:\|G-P\|>5\}.
+\label{eq:q2J}
 \end{equation}
-这是未利用“首次已成功接收”这一信息的保守选择（保守：$E$ 中的点对 $R\in[1000,1500]$ 的任何源都保证可测；但它不一定是所有可能安全策略中的最大区域）。
+距离源不超过 $5$ 米时，仪器无法给出示向度，应直接采用光学定位与清除。
+楔形约束可写为两条线性不等式：
+\begin{align}
+\sin(\beta-\delta)(u-x)-\cos(\beta-\delta)(v-y)&\le0,\\
+-\sin(\beta+\delta)(u-x)+\cos(\beta+\delta)(v-y)&\le0.
+\end{align}
+由于还包含圆弧和近距离排除区，$J$ 不必是四边形。
 
-对未被目标圆域裁切的标准 $D$，$E$ 可精确化简为四个圆盘之交：
-\begin{equation}\label{eq:fourdisks}
-  E=\bigcap_{\substack{r\in\{5,1500\}\\ s\in\{-1,1\}}}
-    \bigl\{(x,y):\ (x-r\cos\delta)^2+(y-s\,r\sin\delta)^2\le 1000^2\bigr\}.
-\end{equation}
-其依据是：固定 $P$ 后 $\|G-P\|$ 在 $D$ 上的最大值可逐射线讨论——沿每条从原点出发的射线，$\|G-P\|$ 关于距离 $r$ 是凸函数，故最大值在射线两端 $r\in\{5,1500\}$ 处取得；而半径为 $1500$（或 $5$）的圆弧上，$\|G-P\|$ 的最大值在两端点 $\theta=\pm\delta$ 处取得（圆弧张角 $2\delta=2^\circ<\pi$，$\cos$ 在该小弧上单峰）。于是最坏距离只需检查四个角点 $(r\cos\delta,\ s\,r\sin\delta)$，$r\in\{5,1500\},s\in\{-1,1\}$。内侧半径 $5$ 米端点取闭包不改变最坏接收距离约束。\emph{注意：这一有限约束化简依赖“扇形未被裁切、圆弧张角小于 $\pi$”等条件，并非任意扇形都只需检查角点；若目标圆域裁切了 $D$，式~\eqref{eq:fourdisks} 给出的仍是安全子区域（可能更保守），本文第一版即采用之。}若保守地把首站附近 $5$ 米内也纳入源域（不扣近源孔），则只需三个圆盘：$x^2+y^2\le1000^2$ 及两个以 $(1500\cos\delta,\pm1500\sin\delta)$ 为心、半径 $1000$ 的圆盘；本文采用更精细的四圆盘刻画。数值验证（对 $D$ 边界 $2400$ 点采样的暴力最坏距离比对）与四圆盘判据完全一致。
-
-\subsection{定位精度的刻画：最小包围圆}\label{sec:mec}
-
-固定 $P$，第二次实际读数为 $\beta$ 时，正常观测对应的定位区域为
+对非空集合 $A$，定义最小包围圆半径
+$\rho(A)=\min_c\sup_{G\in A}\|G-c\|$，并用闭包计算相同半径。
+所有可能正常读数构成
 \begin{equation}
-  J(P,\beta)=D_{\mathrm{ang}}(P)\cap W(P;\beta,\delta),
-  \qquad D_{\mathrm{ang}}(P)=\{G\in D:\ \|G-P\|>5\},
+\Theta(P)=\bigcup_{\substack{G\in D\\\|G-P\|>5}}
+[\arg(G-P)-\delta,\arg(G-P)+\delta],
+\qquad
+f_1(P)=\sup_{\beta\in\Theta(P)}\rho(J(P,\beta)).
+\label{eq:q2score}
 \end{equation}
-其中 $W(P;\beta,\delta)$ 是以 $P$ 为顶点、中心方向 $\beta$、半角 $\delta$ 的前向楔形，用两条半平面不等式实现：
-\begin{equation}\label{eq:wedge}
-  \sin(\beta-\delta)(u-x)-\cos(\beta-\delta)(v-y)\le0,\qquad
-  -\sin(\beta+\delta)(u-x)+\cos(\beta+\delta)(v-y)\le0 .
-\end{equation}
-$J(P,\beta)$ 的边界由测向射线、扇区边界线与圆弧组成，不一定是四边形。若某读数 $\beta$ 对应的 $J$ 为空，说明该读数不可能由正常观测产生，应跳过，不能计为一次“精确定位成功”。
+角度按圆周解释。该指标同时考虑未知源位置与允许的测角误差，
+不需要为源位置指定概率分布。
+实际观测后，若 $\rho(J(P,\beta))\le20$，走到相应圆心即可保证光学定位成功；
+不能用“区域直径的一半”替代这一判据。
 
-以最小包围圆（minimum enclosing circle, MEC）刻画区域大小：
+对完整扇区，实际上不存在满足 $f_1(P)\le20$ 的 $P\in E$。
+令
 \begin{equation}
-  \rho(P,\beta)=\min_{c}\sup_{G\in J(P,\beta)}\|G-c\|,
+C=\left(\frac{1500}{1+\sin\delta},0\right),\qquad
+r_*=\frac{1500\sin\delta}{1+\sin\delta}\approx25.730.
 \end{equation}
-$\rho$ 为最小包围圆半径，$c$ 为对应圆心。真实主评价函数取所有可能正常读数的最坏情形：
-\begin{equation}\label{eq:f1}
-  f_1(P)=\sup_{\beta\in\Theta(P)}\rho(P,\beta),\qquad
-  \Theta(P)=\bigcup_{G\in D_{\mathrm{ang}}(P)}
-    \bigl[\arg(G-P)-\delta,\ \arg(G-P)+\delta\bigr],
-\end{equation}
-即同时考虑所有可能源位置与所有允许的第二次测角误差（不能只用真实方向、零误差或随机误差代替）。实际观测后，仅当 $\rho(P,\beta)\le 20$ 时，包围圆圆心才是保证成功的光学检测位置（光学定位有效距离 $20$ 米）；问题二只要求较好的定位效果，不要求第二次检测后必然清除。
-
-数值实现：对给定 $\beta$，$J(P,\beta)$ 为“直线与圆弧围成的凸域减去两个半径 $5$ 米小孔”。圆弧采用内接/外切正 $N$ 边形（$N=2048$）做内外近似，半平面用 Sutherland--Hodgman 裁剪；近源孔（原点孔与 $P$ 孔）在\emph{内近似}中减去外接多边形（半径 $5+5\times10^{-4}$，结果仍是子集），在\emph{外近似}中减去内接多边形（半径 $5-5\times10^{-4}$，结果仍是超集；若外近似不扣孔，当 $P$ 位于扇区内部时定位区域贴着 $P$ 孔，上界将无法收敛，这是实现中发现并修正的关键细节）。凸多边形区域的最小包围圆等于其顶点集的最小包围圆，故对顶点集用 Welzl 随机增量算法（基础 MATLAB 实现，无工具箱依赖，单点/两点/共线/重复/近共线均有专门处理）求得圆心与半径，集合包含关系给出
+圆盘 $B(C,r_*)$ 内切于扇区，且完全位于首站 $5$ 米排除区之外。
+由 $P\in E$ 得 $\|P\|\le1005$，而 $\|C\|-r_*>1448$，
+所以从 $P$ 指向 $C$ 的射线穿过该圆盘的一条完整直径，
+直径上的点距 $P$ 均大于 $5$ 米且与同一读数相容。
+因此
 \begin{equation}
-  \rho(J_{\mathrm{in}})\le\rho(J(P,\beta))\le\rho(J_{\mathrm{out}}).
+f_1(P)\ge r_*>20,\qquad P\in E.
+\label{eq:q2impossible}
 \end{equation}
-这里的上下界是普通浮点实现配合显式集合包含关系的数值界限，不是区间算术的形式化认证；浮点容差（$10^{-9}$ 量级）与上述数学界限在程序与论文中明确区分。
+这给出不可行性的下界证明，并不表示最优半径能达到 $r_*$。
+若目标圆域裁掉了上述内切圆盘，则不再使用此证明。
 
-\subsection{两次检测不能普遍保证 20 米覆盖}\label{sec:no20}
+\subsection{近似排序与有依据的淘汰}
 
-\emph{定理（下界）：}对标准完整扇区，任意 $P\in E$ 都有
-\begin{equation}\label{eq:lower257}
-  f_1(P)\ge r_*=\frac{1500\sin\delta}{1+\sin\delta}\approx25.73\ \text{米}.
-\end{equation}
-\emph{证明要点：}扇区内部包含圆盘 $C=\bigl(1500/(1+\sin\delta),\,0\bigr)$、半径 $r_*$（该圆盘与两条扇区边界线及外弧均相切，故 $C$ 圆盘 $\subset D$）。由 $E$ 的四圆盘刻画，$E\subset\{P:\|P-(5\cos\delta,0)\|\le1000\}$，故 $\|P\|\le1005<1500/(1+\sin\delta)-r_*\approx1448$，即 $P$ 必在 $C$ 圆盘之外。取实际读数 $\beta$ 指向 $C$：射线 $P\to C$ 穿过该圆盘的一条完整直径（长度 $2r_*\approx51.46$ 米），直径上所有点方向相同、全部属于 $D$ 且距 $P$ 超过 $5$ 米，因此相应定位区域包含这条直径，覆盖半径不小于 $r_*$。证毕。
-
-由此，$f_1(P)\ge25.73>20$ 对所有 $P\in E$ 成立：\emph{两次检测不能保证把定位区域压缩到 20 米光学清除门槛之内}，问题二的目标只能是尽量降低 $f_1$。注意式~\eqref{eq:lower257} 是理论下界，不是已经求出的最优值，不能把 $25.73$ 米当作可达到的最优精度；$20$ 米是实际清除门槛，不是所有候选点必须通过的硬条件。
-
-\subsection{一阶端点近似指标（仅用于排序）}\label{sec:hat}
-
-把参考源位置暂时放在第一次示向度中心射线上 $G=(r,0)$，对测向方程作小角度线性化，位置误差满足
+直接对整个 $E$ 做高精度扫描开销较大。先构造低成本指标，对候选点排序。
+在首条中心射线取参考源 $G=(r,0)$，对测向方程作一阶线性化，
+得到位置误差平行四边形
 \begin{equation}
-  |\Delta v|\le r\delta,\qquad
-  \bigl|\,y\,\Delta u+(r-x)\,\Delta v\,\bigr|\le\bigl((r-x)^2+y^2\bigr)\delta .
+|\Delta v|\le r\delta,\qquad
+|y\Delta u+(r-x)\Delta v|\le\bigl((r-x)^2+y^2\bigr)\delta .
 \end{equation}
-近似误差区域是中心对称平行四边形，其覆盖半径（等于最大顶点距离）为
-\begin{equation}\label{eq:rhohat}
-  \hat\rho(r;x,y)=\delta\sqrt{r^2+\frac{\bigl((r-x)^2+y^2+r|r-x|\bigr)^2}{y^2}},\qquad y\ne0 .
-\end{equation}
-固定 $P$ 后，$\hat\rho$ 关于 $r\ge0$ 经数值验证为凸（验证程序在 $r\in[0,1500]$ 网格上的二阶差分无违反，多组 $P$ 复验），故
+其包围半径为
 \begin{equation}
-  \hat f_1(P)=\max\bigl\{\hat\rho(5;P),\,\hat\rho(1500;P)\bigr\}.
+\widehat\rho(r;P)=\delta
+\sqrt{r^2+\frac{\left((r-x)^2+y^2+r|r-x|\right)^2}{y^2}},
+\qquad y\ne0.
+\label{eq:q2surrogate}
 \end{equation}
-\emph{必须说明：}这是中心射线、一阶线性化且未做真实边界裁剪的近似指标；它\emph{不自动是}真实 $f_1$ 的上界或下界；\emph{不能}单独用于证明 20 米覆盖；\emph{不能}作为永久排除候选点的必要条件。程序中对 $y\approx0$ 的奇异性置为 $10^9$（排名最末），真实有界区域的评价不受此影响。$\hat f_1$ 只用于快速排序和产生搜索起点；为防遗漏，同时保留在 $E$ 内分布较广的多样化起点，避免只搜索近似指标最好的一个小区域。
-
-\subsection{具有必要性依据的粗筛下界}\label{sec:pair}
-
-预先从真实 $D$ 内选取有限个见证源位置 $G_i$（包括远端边界点、若干不同距离与方向的点，共 $13\times7=91$ 个）。它们只是构造下界的见证点，不是声称用有限点替代全部 $D$。
-
-固定 $P$，若两个正常可测见证点 $G_i,G_j$（距 $P$ 均大于 $5$ 米）从 $P$ 看的最小圆周夹角不超过 $2\delta$，则存在同一实际读数 $\beta$ 与两者同时相容，于是 $G_i,G_j\in J(P,\beta)$，故
+这个近似模型中，径向最坏值确实在端点取得。具体地，令
+\[
+H(r)=(r-x)^2+y^2+r|r-x|
+=\max\{x^2+y^2-xr,\ 2r^2-3xr+x^2+y^2\},\quad r\ge0.
+\]
+$H$ 非负且凸。由欧氏范数在非负象限上的单调性及三角不等式，
+$\widehat\rho(r;P)=\delta\|(r,H(r)/|y|)\|_2$ 也是凸函数，故可取
 \begin{equation}
-  f_1(P)\ge\frac{\|G_i-G_j\|}{2},
-  \qquad
-  \ell_{\mathrm{pair}}(P)=\max_{\text{满足条件的点对}(i,j)}\frac{\|G_i-G_j\|}{2}.
+\widehat f_1(P)=\max\{\widehat\rho(5;P),\widehat\rho(1500;P)\}.
 \end{equation}
-小夹角条件用向量点积判断，避免大量 atan2：
+这一端点结论适用于线性化指标，不能推广为真实 $f_1$ 的端点定理。
+因此 $\widehat f_1$ 只用于排序；$y=0$ 的奇异点交给真实区域模型评价。
+
+另从 $D$ 中取有限个见证点 $G_i$。
+若两点距 $P$ 均大于 $5$ 米，且从 $P$ 看去的夹角不超过 $2\delta$，
+则它们可产生同一正常读数，因而
 \begin{equation}
-  (G_i-P)\cdot(G_j-P)\ge\cos(2\delta)\,\|G_i-P\|\,\|G_j-P\|,
+\ell_{\rm pair}(P)=
+\max_{\substack{i<j,\ \|G_i-P\|,\|G_j-P\|>5\\
+\angle(G_i-P,G_j-P)\le2\delta}}
+\frac{\|G_i-G_j\|}{2}\le f_1(P).
 \end{equation}
-并注意零向量、浮点容差与近距离分支。没有符合条件的点对时取下界 $0$（而不是认为精度为 $0$）。此外，§\ref{sec:subdiv} 中采样可行读数处的内近似覆盖半径同样提供下界，取
-$\ell(P)=\max\bigl\{\ell_{\mathrm{pair}}(P),\ \text{已采样可行}\ \beta\ \text{的覆盖半径下界}\bigr\}$。
+无符合条件的点对时取下界 $0$。设已有某候选点的评分上界为
+$U_{\rm best}$，若 $\ell_{\rm pair}(P)>U_{\rm best}+\tau$，
+则可排除该点，不必进一步细算。
+这种淘汰有必要条件依据；仅凭近似排序略过候选点则属于启发式筛选。
 
-\emph{排除规则：}先对若干有希望候选点精细评价，得到当前最好候选点的真实评分上界 $U_{\mathrm{best}}$。若 $\ell(P)>U_{\mathrm{best}}$，$P$ 的真实 $f_1$ 严格更大，可安全淘汰；若希望保留比当前最好结果差不超过 $\tau$ 米的候选区域，则 $\ell(P)>U_{\mathrm{best}}+\tau$ 时才排除。这里必须区分：\emph{近似函数}的差只说明排序靠后；\emph{真实下界}已超过阈值，才支持数学意义上的排除。用离散点判断不能自动证明整块网格单元都被排除，本文始终把粗筛结果标为“采样筛选区域”。
+\subsection{固定检测点的自适应角度计算}
 
-\subsection{角度区间自适应细分与上下界}\label{sec:subdiv}
+固定 $P$ 后，用源域的凸外多边形确定可能方向的覆盖区间，
+再向两侧扩展 $\delta$。若 $P$ 位于该多边形内，取整个圆周。
+这样既能处理跨越 $0^\circ$ 的读数，也能包含所有可能正常观测。
 
-将可能观测角分为区间 $I_j=[\beta_j-\eta_j,\beta_j+\eta_j]$。对整个区间构造外包区域
+将覆盖区间分成角度箱 $I_j=[\beta_j-\eta_j,\beta_j+\eta_j]$。
+只要 $\delta+\eta_j<\pi/2$，对任意 $\beta\in I_j$ 都有
 \begin{equation}
-  J_j^{+}=D\cap W(P;\beta_j,\delta+\eta_j),
+J(P,\beta)\subseteq
+D\cap W(P;\beta_j,\delta+\eta_j)\cap\{G:\|G-P\|>5\}.
 \end{equation}
-它包含区间内每个实际读数对应的定位区域（读数在区间内时其楔形必含于加宽楔形），故其覆盖半径给出该角度区间的上界 $U_j$；在确实可行的具体角度 $\beta$ 上计算内近似覆盖半径，形成下界。维护 $L(P)\le f_1(P)\le U(P)=\max_j U_j$，每次优先细分\emph{上界最大}、仍可能决定最坏结果的角度区间，并检查：
-\begin{enumerate}
-  \item $U(P)-L(P)\le$ 指定精度（收敛）；
-  \item $L(P)>$ 当前淘汰阈值（提前返回“无需继续评价”）；
-  \item 达到计算预算（返回尚未收敛的上下界与明确状态，不假装已经求准）。
-\end{enumerate}
-粗搜索用约 $1\sim2$ 米评价间隙，最终少量候选点用 $0.1$ 米或更小；这些是可配置算法参数，不是题目给定常数。可行读数范围 $\Theta(P)$ 的安全覆盖区间这样得到：$P$ 在 $D$ 内部时取整个圆周；否则方向集合 $\{\arg(G-P):G\in D\}$ 是连续弧，其端点在 $D$ 边界上，而 $P\in E$ 时 $\|P\|\le1005<1500$，外圆无切点，故端点必在四个角点处，取四角方向极值再加 $0.05^\circ$ 数值余量。初始角度箱取 $1^\circ$ 半宽（保证加宽楔形半角 $2^\circ\ll90^\circ$，半平面表示成立）。\emph{本方法不假设“两个观测角端点足以覆盖全部最坏情况”，也无需手工解析全部关键角度。}
-
-\subsection{两阶段选点算法}\label{sec:algo}
-
-\emph{A.} 用 $E$ 的显式圆盘约束生成一批粗候选点（$20\times20$ 规则网格加 $160$ 个均匀随机点，共约 $360$ 个；不做全 $E$ 密集精确扫描）。\emph{B.} 用 $\hat f_1$ 排序，取近似最优 $20$ 个，并以贪婪最远点法另留 $12$ 个多样化起点。\emph{C.} 按近似优劣依次粗评（角度区间细分，预算 $160$ 次/点，间隙 $2$ 米），建立当前最好上界 $U_{\mathrm{best}}$。\emph{D.} 用点对下界数学排除：$\ell(P)>U_{\mathrm{best}}+\tau$ 的点直接淘汰；粗评中 $L(P)>U_{\mathrm{best}}$ 的点提前终止。\emph{E.} 从保留的若干起点出发做带 $E$ 约束的二维模式搜索（坐标方向，步长 $48\to4$ 米减半），\emph{不假设 $f_1$ 关于 $P$ 凸}，也不只搜 $E$ 边界。\emph{F.} 全局状态缓存：每个已评价点缓存其角度箱状态，提高精度时继续细分而非重新计算；缓存键为毫米量化坐标（本搜索中无两个不同评价点落入同一键）。\emph{G.} 只对 $U\le U_{\mathrm{best}}+3$ 米的少量候选点以 $0.1$ 米间隙精评复核。全程输出：已评价候选点数、完整/提前终止评价次数、当前最好上下界、缓存命中数、耗时与收敛状态；所有耗时均为实测，不以外推的“每点耗时”承诺总时间。
-
-\subsection{精度与移动距离的分层选择策略}\label{sec:f2}
-
-主评价 $f_1$（越小越好）与移动成本 $f_2(P)=\|P\|$（到第二站的移动时间为 $\|P\|/5$，速度 $5$ 米/秒）采用分层优化，不引入任意权重：理论上
+对右侧区域取外多边形近似 $K_j^+$，其包围半径给出整箱上界。
+在箱中心的正常定位区域取内多边形近似 $K_j^-$，得到下界。
+结合见证点及适用时的式~\eqref{eq:q2impossible}，维护
 \begin{equation}
-  m=\inf_{P\in E}f_1(P),\qquad
-  F_\tau=\{P\in E:\ f_1(P)\le m+\tau\},
+L(P)=\max\{\ell_{\rm pair}(P),r_*,\max_{\text{已采样 }j}\rho(K_j^-)\}
+\le f_1(P)\le U(P)=\max_j\rho(K_j^+).
+\label{eq:q2bounds}
 \end{equation}
-再在 $F_\tau$ 中选 $\|P\|$ 最小者；$\tau$ 为可配置精度让步，默认取 $1$ 米并作参数对比。注意实际算法没有完成全局最优证明，只能得到数值最佳参考值 $\hat m$；“相对于当前数值最佳参考值的优良候选区域”不等于已证明的全局 $F_\tau$。只优化 $\|P\|$ 对应到第二站的时间；若讨论直到清除的总路程，还要加入从 $P$ 到实际观测后包围圆圆心的路程，两者不得混淆。若需要归一化展示，可定义 $Q(P)=1-f_1(P)/\rho(D)$（$\rho(D)\approx750.1$ 米为 $D$ 自身的最小包围圆半径），表示最坏情况下包围半径的相对缩减程度；第一版未将其加入目标。
+不适用的 $r_*$ 项删去；空交的半径约定为 $0$，只作为最大值计算中的中性值。
 
-\subsection{真实运行结果与参数分析}\label{sec:results}
+内外近似须保持包含方向：源域圆弧用连弦构造子集、相邻切线构造超集；
+扣除近源圆孔时则相反，内近似扣除外接孔，外近似只扣除内接孔。
+对正 $n$ 边形，半径为 $a$ 的内接孔的边心距为 $a\cos(\pi/n)$。
+裁剪后对各凸片的全部顶点求最小包围圆，得到相应半径与圆心。
 
-\paragraph{验证套件（全部通过，$51$ 项）。}最小包围圆基础测试：单点、两点、共线三点、等边三角形、已知圆上 $20$ 点、重复点、近共线点、随机 $10$ 点与枚举对拍（半径误差 $<10^{-8}$）；标准候选点回归：$P=(750,600)$ 实测 $f_1\in[59.332,59.374]$ 米、最坏读数 $319.129^\circ$，与既有临时验证程序的结果（下界 $59.337$、上界 $59.421$ 米）一致且区间更窄；角度周期性：$(750,600)$ 与 $(750,-600)$ 对称一致，跨 $0/360^\circ$ 情形（$P=(750,26)$，最坏读数 $355.06^\circ$）正确；近共线情形 $P=(750,0)$：受 $D$ 限制有界，$f_1\in[372.63,372.71]$ 米，与近似公式 $y=0$ 奇异无关；空交（$\beta=90^\circ$ 不可行）、正常观测与 $5$ 米饱和分支（距 $P=5$ 米的点被内区域排除、$15$ 米的点保留）正确区分；上下界随评价精度（$2/0.5/0.1$ 米）单调收紧且 $U-L\le$ 目标 $+0.02$ 米；固定随机种子重复运行结果一致；独立 $1501$ 点密角度采样最大外半径 $59.28$ 米落在细分上下界之间（密采样只是核验，不是连续角域上界的证明）；一阶近似公式与平行四边形覆盖半径逐点吻合，$\hat\rho$ 关于 $r$ 的凸性数值验证无违反；$E$ 的四圆盘刻画与 $28800$ 点暴力最坏距离判据零失配。
+每次二分上界最大的角度箱，直到 $U-L$ 达到指定容差，
+或下界超过淘汰阈值，或达到计算预算。
+程序分别记录收敛、淘汰与预算耗尽状态，并缓存角度箱以供后续续算。
+这里的上下界来自集合包含关系，具体实现使用双精度浮点与数值余量，
+未使用区间算术认证。圆弧与孔的近似分辨率固定时，
+极小容差可能无法达到，此时应提高几何分辨率。
 
-\paragraph{两阶段选点结果（标准完整扇区，$E$ 内）。}
-\begin{table}[H]\centering\small
-\caption{主要候选点与选择策略实测结果（单位：米，最坏读数单位：度）}
-\label{tab:q2results}
-\begin{tabular}{lccccc}
+\subsection{精度优先、兼顾路程的两阶段策略}
+
+在 $E$ 内生成规则网格点及随机点，
+用 $\widehat f_1$ 保留排名较好的点，同时补充空间分布较广的起点。
+粗评利用上述下界提前淘汰，从多个起点进行带 $E$ 约束的八方向模式搜索。
+最后先精评上界较小的点，再根据更新后的阈值检查路程较短的点；
+精评候选总数设上限，避免重新变成全域高精度扫描。
+
+理论上，希望先最小化 $f_1$，再在允许的精度让步内最小化路程：
+\begin{equation}
+m=\inf_{P\in E}f_1(P),\qquad
+F_\tau=\{P\in E:f_1(P)\le m+\tau\},\qquad
+\min_{P\in F_\tau}f_2(P),\quad f_2(P)=\|P\|.
+\end{equation}
+实际搜索得到的是有限个精评点组成的集合 $\mathcal C$。令
+\begin{equation}
+\widehat m=\min_{P\in\mathcal C}U(P),\quad
+\widehat{\mathcal F}_\tau=
+\{P\in\mathcal C:U(P)\le\widehat m+\tau\},\quad
+S\in\arg\min_{P\in\widehat{\mathcal F}_\tau}\|P\|.
+\label{eq:q2selection}
+\end{equation}
+$\mathcal C$ 只包含达到精评容差的点。
+由此得到相对于当前数值最好结果的优良候选点集；
+它是连续候选区域的离散搜索结果，不能当作已完整求出的 $F_\tau$。
+移动时间为 $\|S\|/5$，此处只计前往第二站的路程。
+
+\subsection{数值结果与适用范围}
+
+采用随机种子 $42$，误差半角 $1^\circ$，粗评间隙
+$\QCoarseTol$ 米，精评间隙 $\QFineTol$ 米。
+首次扇区的 $2^\circ$ 外圆弧分为 $\QArcN$ 段，近源孔采用
+$\QHoleN$ 边形。默认生成 $\QCandidates$ 个候选点，
+最多粗评 $32$ 个点，局部搜索后最多精评 $24$ 个点，
+粗评和精评分别限制为每点 $160$ 和 $900$ 次包围圆计算。
+$\tau=\QTau$ 米时的结果见表~\ref{tab:q2result}，表内数据由程序自动导出。
+
+\begin{table}[H]
+\centering\small
+\caption{完整扇区模型下的候选点比较，长度单位为米}
+\label{tab:q2result}
+\begin{tabular}{lccc}
 \toprule
-点 & 坐标 $(x,y)$ & 下界 $L$ & 上界 $U$ & 最坏读数 & 距离 $\|P\|$ \\
+选择依据 & 坐标 $(x,y)$ & 评分区间 $[L,U]$ & 路程\\
 \midrule
-$P_{\mathrm{best}}$（数值最优参考 $\hat m$） & $(818.47,580.15)$ & $55.657$ & $55.729$ & $317.33$ & $1003.23$ \\
-$P_{f_2}$（$\tau=1$ 米距离最优） & $(799.22,-589.98)$ & $56.504$ & $56.593$ & $42.34$ & $993.39$ \\
-$P_{f_2}$（$\tau=3$ 米） & $(794.47,-580.15)$ & $57.223$ & $57.303$ & $41.69$ & $983.74$ \\
-$P_{\mathrm{hat}}$（仅近似指标 $\hat f_1=60.78$） & $(818.47,580.15)$ & $55.657$ & $55.729$ & $317.33$ & $1003.23$ \\
-回归参考 $P=(750,600)$ & $(750,600)$ & $59.332$ & $59.374$ & $319.13$ & $960.47$ \\
+\QResultRows
 \bottomrule
 \end{tabular}
 \end{table}
 
-数值最优参考 $\hat m=55.729$ 米，最优候选 $P_{\mathrm{best}}=(818.47,580.15)$，其真实评分上下界 $[55.657,55.729]$ 米（间隙 $0.073$ 米），最坏读数 $317.33^\circ$。分层选择（$\tau=1$ 米）：在 $F_\tau$ 内移动距离最短的点 $P_{f_2}=(799.22,-589.98)$，移动距离 $993.39$ 米、移动时间 $198.68$ 秒。在默认参数下，仅用近似指标 $\hat f_1$ 选出的点 $P_{\mathrm{hat}}=(818.47,580.15)$（$\hat f_1=60.78$ 米）与两阶段数值最优参考重合；两阶段方法的增益体现在三处：(a) 给出带上下界与收敛状态的评分而非单一近似值；(b) 粗筛与提前淘汰把真实评价调用压缩到 $106$ 次（纯点对下界排除 $5$ 点、细分中提前终止 $26$ 点、缓存命中 $44$ 次），而候选总数 $411$ 个；(c) 在 $F_\tau$ 内做距离分层选择：$\tau=1$ 米时距离 $993.39$ 米，比直接取 $P_{\mathrm{best}}$ 的 $1003.23$ 米少 $9.83$ 米（约 $2.0$ 秒移动时间）。全部候选约 $411$ 个，粗评 $32$ 个，评价调用 $106$ 次；外层搜索实测耗时 $6.1$ 秒（不含 MATLAB 启动）。图~\ref{fig:q2overview}--\ref{fig:q2dense} 给出候选域、最坏定位区域、近似指标热图、收敛曲线、多边形分辨率与密采样核验；插值热力图仅用于展示，不作为严格评分或整体可行性证明。
+本次搜索的最小精评上界为 $\QBestU$ 米，对应评分区间
+$[\QBestL,\QBestU]$ 米。
+兼顾路程后选取 $S=(\QSelectedX,\QSelectedY)$，
+其评分区间为 $[\QSelectedL,\QSelectedU]$ 米，
+路程为 $\QSelectedDist$ 米，移动时间约 $\QSelectedTime$ 秒。
+搜索调用固定点评价 $\QCalls$ 次，耗时 $\QSearchTime$ 秒；
+默认流程至绘图完成约 $\QRunTime$ 秒，均不包含 MATLAB 启动。
+以上结果在本机 MATLAB R2025a 上计算。
 
-\paragraph{参数敏感性。}\begin{table}[H]\centering\small
-\caption{参数敏感性}
-\label{tab:q2sens}
-\begin{tabular}{lcc}
-\toprule
-参数 & 取值 & 结果 \\
-\midrule
-$\tau$（精度让步，米） & $0$ & $F_\tau$ 内 $1$ 个已精评点，最短距离 $1003.23$ 米（$200.65$ 秒） \\
-$\tau$（精度让步，米） & $1$ & $F_\tau$ 内 $23$ 个已精评点，最短距离 $993.39$ 米（$198.68$ 秒） \\
-$\tau$（精度让步，米） & $3$ & $F_\tau$ 内 $40$ 个已精评点，最短距离 $983.74$ 米（$196.75$ 秒） \\
-精评间隙（米） & $0.5/0.1/0.05$ & 上下界差 $0.0727/0.0727/0.0365$，均收敛 \\
-候选数量 & $291/571$ & $\hat m$ 均为 $55.729$ 米（同一 $P_{\mathrm{best}}$） \\
-\bottomrule
-\end{tabular}
-\end{table}
-候选数量从 $291$ 增至 $571$ 个时数值最优参考保持 $55.729$ 米（同一点 $P_{\mathrm{best}}$），结论稳定。精评间隙 $0.5/0.1/0.05$ 米时 $P_{\mathrm{best}}$ 的上下界差为 $0.0727/0.0727/0.0365$ 米，均正常收敛（$0.5$ 与 $0.1$ 米两次命中缓存状态，间隙不变是缓存复用而非未收敛）。
+验证包括已知圆的恢复、与枚举最小包围圆对照、镜像对称、
+近共线情形、角度跨周、孔边界包含关系及缓存续算。
+通过加密角度采样核对结果，但连续角域上界依靠式~\eqref{eq:q2bounds}，
+不依靠采样最大值。可选敏感性实验分别改变 $\tau$ 和精评容差。
 
-\subsection{计算复杂度、实测耗时与局限性}\label{sec:cost}
-
-单次 $\beta$ 评价：半平面裁剪 $O(N_{\mathrm{arc}}+m)$，Welzl 随机增量算法期望 $O(m)$（$m$ 为顶点数，约 $20\sim2100$）；角度细分每次分裂新增 $3$ 次 $\beta$ 评价，$(750,600)$ 精评至 $0.05$ 米共 $158$ 次角度评价、耗时 $0.35$ 秒；最坏型点（$P\in D$ 内部、针状区域贴孔）约需 $200\sim400$ 次。整体：验证约 $3.4$ 秒，外层搜索约 $6.1$ 秒，总耗时 $45.3$ 秒（R2025a，单机实测）。
-
-局限性（如实说明）：(1) $\hat m$ 是数值最佳参考，\emph{不是已证明的全局最优}，模式搜索只保证在访问邻域内改进；(2) 密角度采样与离散见证点均为核验/下界构造，不是连续角域的上界证明；(3) $\hat f_1$ 不是严格必要条件，只能用于排序；(4) 目标圆域裁切情形采用保守 $E$（安全子区域），未求最大安全区域；(5) 上下界基于浮点实现与显式集合包含关系，不是区间算术形式化认证；(6) 未把“角度成功比例”当作概率，所有结论均为最坏情形意义上的保证。
-
-\begin{figure}[H]\centering
-\includegraphics[width=0.66\textwidth]{\figpath fig1_overview.png}
-\caption{两阶段选点概览：$D$（浅蓝）、$E$ 边界（黑点）、见证点（灰点）、各类候选状态与最终选择（红色五角星 $P_{\mathrm{best}}$、紫色菱形 $P_{f_2}$、绿色方块 $P_{\mathrm{hat}}$）}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\linewidth]{\qtwopath figures/fig1_overview.png}
+\caption{候选区域 $E$、粗候选点及精评结果；圈出的点属于
+$\widehat{\mathcal F}_\tau$，未将离散点插值为已证明的连续区域}
 \label{fig:q2overview}
 \end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=0.62\textwidth]{\figpath fig2_worst_region.png}
-\caption{$P_{\mathrm{best}}$ 在最坏读数下的定位区域：内近似（浅蓝填充）、外近似边界（黑线）、最小包围圆（红线）与圆心（红叉）}
-\label{fig:q2worst}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.70\linewidth]{\qtwopath figures/fig2_worst_region.png}
+\caption{所选点在一个较差采样读数下的定位区域与外近似包围圆。
+该圆覆盖真实区域；图中读数不被宣称为精确最坏读数}
+\label{fig:q2region}
 \end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=0.60\textwidth]{\figpath fig3_hat_heatmap.png}
-\caption{近似指标 $\hat f_1$ 在 $E$ 上的分布（插值热图仅用于展示，不是严格评分）}
-\label{fig:q2hat}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\linewidth]{\qtwopath figures/fig3_convergence.png}
+\caption{最优精评候选点的评分上下界及区间宽度随计算推进的变化}
+\label{fig:q2convergence}
 \end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=0.62\textwidth]{\figpath fig4_convergence.png}
-\caption{角度区间自适应细分收敛曲线（红：上界 $U$，蓝：下界 $L$；粗线 $P_{\mathrm{best}}$，细线 $(750,600)$）}
-\label{fig:q2conv}
-\end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=0.55\textwidth]{\figpath fig5_bounds_vs_N.png}
-\caption{上下界随圆弧多边形分辨率 $N$ 收紧（$P=(750,600)$）}
-\label{fig:q2N}
-\end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=0.60\textwidth]{\figpath fig6_dense_check.png}
-\caption{独立密角度采样一致性核验（$P=(750,600)$，密采样只是核验，不是连续角域上界的证明）}
-\label{fig:q2dense}
-\end{figure}
+
+该方法的主要限制在于外层仍采用有限候选与局部搜索，
+因此 $\widehat m$ 不是经过证明的全局最优值。
+若需要第三次观测，可将实际第二次读数得到的 $J$ 作为新的源域继续选点；
+后续任务还应计入前往光学检测位置及清除所需的时间。

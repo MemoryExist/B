@@ -1,8 +1,9 @@
 function [c, r] = welzl_mec(P, cfg)
-%WELZL_MEC 最小包围圆: Welzl 随机增量算法(迭代实现, 无递归深度问题)
+%WELZL_MEC 增量支撑集最小包围圆（沿用文件名，不声称 Welzl 的线性复杂度）
 %   输入 P: 2×n 点列; cfg.mec_tol / cfg.mec_tol_rel: 数值容差
 %   输出 [c, r]: 圆心(2×1)与半径; 空集返回 r=0, c=NaN
 %   调用前由外部 rng 固定种子保证可重复; 支持单点/两点/共线/重复/近共线点
+P=unique(P','rows')';
 n = size(P, 2);
 if n == 0
     c = [nan; nan]; r = 0; return;

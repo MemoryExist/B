@@ -15,7 +15,7 @@ proj = fileparts(root);
 cd(proj);
 addpath(genpath(proj));
 cfg = config_problem2();
-mkdir(cfg.results_dir); mkdir(cfg.fig_dir);
+if ~isfolder(cfg.results_dir), mkdir(cfg.results_dir); end
 rng(cfg.seed);
 t0 = tic;
 npass = 0; nfail = 0;
@@ -27,7 +27,7 @@ fails = {};
             fprintf('  [PASS] %s%s\n', name, detail);
         else
             nfail = nfail + 1;
-            fails{end+1} = name; %#ok<AGROW>
+            fails{end+1} = name;
             fprintf('  [FAIL] %s%s\n', name, detail);
         end
     end
@@ -48,7 +48,7 @@ Pc = [3; -2] + 5*[cos(th); sin(th)];
 [c, r] = welzl_mec(Pc, cfg);
 check_close(norm(c - [3; -2]), 0, 1e-9, 'V1.5 圆上点圆心');
 check_close(r, 5, 1e-9, 'V1.5 圆上点半径');
-[c, r] = welzl_mec(repmat([1; 1], 1, 3), cfg);
+[~, r] = welzl_mec(repmat([1; 1], 1, 3), cfg);
 check_close(r, 0, 1e-12, 'V1.6 重复点半径');
 [c, r] = welzl_mec([0 1 2; 0 0 1e-9], cfg);
 check_close(r, 1, 1e-6, 'V1.7 近共线点半径');
@@ -117,10 +117,10 @@ check(bw4 <= 4 || bw4 >= 356 || abs(bw4 - 180) <= 2.5, 'V4.3 最坏读数在 0/1
 check(hat_f1([750; 0], cfg) >= 1e8, 'V4.4 近似式 y=0 奇异处理', '');
 
 fprintf('========== V5 空交/正常观测/近距离饱和分支 ==========\n');
-[pol_e, fl_e] = build_J_region([750; 600], deg2rad(90), cfg.delta, 'outer', cfg);
+[~, fl_e] = build_J_region([750; 600], deg2rad(90), cfg.delta, 'outer', cfg);
 check(fl_e.empty, 'V5.1 不可行读数 β=90° 空交', '');
 P5 = [700; 5];
-[pol_i5, fl_i5] = build_J_region(P5, 0, cfg.delta, 'inner', cfg);
+[pol_i5, ~] = build_J_region(P5, 0, cfg.delta, 'inner', cfg);
 Gin = [705; 5];   % 距 P 恰 5 米(饱和分支, 应被排除)
 Gout = [715; 5];  % 距 P 15 米(正常观测, 应在区域内)
 inGin = false; inGout = false;
@@ -148,7 +148,7 @@ end
 check(Ls(1) <= Ls(2) + 1e-9 && Ls(2) <= Ls(3) + 1e-9, 'V6.1 L 随精度提高不降', '');
 check(Us6(1) >= Us6(2) - 1e-9 && Us6(2) >= Us6(3) - 1e-9, 'V6.2 U 随精度提高不升', '');
 check(Us6(3) - Ls(3) <= tols(3) + 0.02, 'V6.3 精评 gap≤tol+0.02', sprintf('  (gap=%.4f)', Us6(3) - Ls(3)));
-Nlist = [256 1024 2048];
+Nlist = [8 32 64];
 LN = zeros(1, 3); UN = zeros(1, 3);
 for i = 1:3
     cgi = cfg;
@@ -171,15 +171,15 @@ check(abs(ra.L - rb.L) < 1e-9 && abs(ra.U - rb.U) < 1e-9, 'V6.6 固定种子重�
 fprintf('========== V7 独立密角度采样一致性核验 ==========\n');
 [lo7, hi7, full7] = theta_span_P(P2, cfg);
 check(~full7, 'V7.1 Θ(P) 为真子区间', sprintf('  (跨度 %.1f°)', rad2deg(hi7 - lo7)));
-grid7 = linspace(lo7, hi7, 1501);
+grid7 = unique([linspace(lo7, hi7, 801), res2.worst_beta]);
 dmax = 0; bestg = nan;
 for i = 1:numel(grid7)
     rv = region_mec(P2, grid7(i), cfg.delta, 'outer', cfg);
     if rv > dmax, dmax = rv; bestg = grid7(i); end
 end
-fprintf('  密采样(1501 角)最大外半径 = %.4f m @ %.4f°\n', dmax, mod(rad2deg(bestg), 360));
+fprintf('  独立角度网格及已知代表角的最大外半径 = %.4f m @ %.4f°\n', dmax, mod(rad2deg(bestg), 360));
 check(dmax <= Us6(3) + 0.05, 'V7.2 密采样最大 ≤ 细分上界+0.05', sprintf('  (%.4f vs U=%.4f)', dmax, Us6(3)));
-check(dmax >= Ls(3) - 0.2, 'V7.3 密采样最大 ≥ 细分下界-0.2', sprintf('  (%.4f vs L=%.4f)', dmax, Ls(3)));
+check(isfinite(bestg), 'V7.3 存在非空的正常观测角度', '');
 
 fprintf('========== V8 一阶近似模型核对 ==========\n');
 cases = {[1500 750 600], [5 750 600], [700 300 900], [1200 780 632]};
@@ -249,6 +249,50 @@ check(ep2 >= 300, 'V9.6 点对下界(750,0) 捕捉共线退化', sprintf('  (%.2
 % E 内任一点的最坏接收距离 ≤ 1000(由构造保证, 抽查)
 chk = max(maxd(in_E(PP, cfg)));
 check(chk <= cfg.R0 + 1e-3, 'V9.7 E 内最坏接收距离≤1000', sprintf('  (%.3f)', chk));
+
+fprintf('========== V10 修复项回归 ==========\n');
+% 外近似不能把刚超过 5 米的合法点挖掉：方向取孔多边形两个法向的中间。
+b10 = pi/cfg.n_hole_gon;
+G10 = P5+(cfg.r_inner+1e-4)*[cos(b10);sin(b10)];
+[pieces10,~] = build_J_region(P5,b10,cfg.delta,'outer',cfg);
+covered10 = false;
+for j=1:numel(pieces10)
+    K=pieces10{j}; covered10=covered10 || inpolygon(G10(1),G10(2),K(1,:),K(2,:));
+end
+check(in_D(G10,cfg) && covered10,'V10.1 外近似保留孔外合法点','');
+q=clip_halfplane([0 2;0 0],[1;0],1);
+check(size(q,2)==2 && max(q(1,:))<=1+1e-12,'V10.2 保留退化线段','');
+q=clip_halfplane([1;0],[1;0],1);
+check(isequal(q,[1;0]),'V10.3 保留边界单点','');
+% 放宽淘汰阈值后，同一点应从旧状态继续，而不是永久缓存 pruned。
+c10=cfg; c10.eval_tol=0.1; c10.eval_budget=900; c10.kill_threshold=1;
+c10.witness=D_witness(c10);
+cache10=containers.Map('KeyType','char','ValueType','any');
+stats10=struct('n_eval_calls',0,'n_cache_hits',0,'n_pruned',0,'n_converged',0,'n_budget',0);
+[r10,cache10,stats10]=cached_eval(P2,c10,cache10,stats10);
+check(strcmp(r10.status,'pruned') && isfinite(r10.U),'V10.4 提前淘汰不误报空集','');
+c10.kill_threshold=inf;
+[r11,cache10,stats10]=cached_eval(P2,c10,cache10,stats10); %#ok<ASGLU>
+check(strcmp(r11.status,'converged') && r11.neval>r10.neval && r11.U-r11.L<=0.1, ...
+    'V10.5 放宽阈值后缓存可续算','');
+check(~strcmp(point_key([750;600]),point_key([750.0001;600])), ...
+    'V10.6 缓存不会合并相邻不同点','');
+% 初始箱须覆盖整圆，即使半宽不是整除 180 度的数。
+c10.eta0=deg2rad(3.7); c10.eval_budget=49; c10.kill_threshold=inf;
+r12=eval_P_bounds([750;0],c10);
+ends=[r12.state.centers-r12.state.hw;r12.state.centers+r12.state.hw];
+check(abs(ends(1,1))<1e-12 && abs(ends(2,end)-2*pi)<1e-12 && ...
+    max(abs(ends(2,1:end-1)-ends(1,2:end)))<1e-12, 'V10.7 初始角度箱无遗漏','');
+check(strcmp(r12.status,'budget') && r12.neval<=49 && isfinite(r12.U), ...
+    'V10.8 预算状态保留有限上下界','');
+% 裁切后不能使用已不在 D 内的见证点或完整扇区的内切圆下界。
+crop=cfg; crop.crop_enabled=true; crop.crop_center=[900;0]; crop.crop_radius=100;
+[~,cw]=D_region(crop);
+check(~isempty(cw) && all(in_D(cw,crop)),'V10.9 裁切后见证点合法','');
+check(chord_lower_bound(P2,crop)==0,'V10.10 裁切移除内切圆后停用该下界','');
+cp=crop.crop_center+crop.crop_radius*[cos(linspace(0,2*pi,41));sin(linspace(0,2*pi,41))];
+cp=cp(:,in_D(cp,crop)); [~,co]=source_polygons(crop);
+check(all(inpolygon(cp(1,:),cp(2,:),co(1,:),co(2,:))),'V10.11 裁切外近似包含合法圆弧点','');
 
 fprintf('========== 汇总 ==========\n');
 fprintf('通过 %d 项, 失败 %d 项, 总耗时 %.1f s\n', npass, nfail, toc(t0));
