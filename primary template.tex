@@ -1,4 +1,4 @@
-% !TEX root = primary template.tex
+﻿% !TEX root = primary template.tex
 %!TEX program = xelatex
 
 % 1. 文档类必须放在最顶端（最第一行）
@@ -883,6 +883,8 @@ $[\QBestL,\QBestU]$ 米。
 
 \section{matlab 源程序}
 
+\subsection{问题一相关代码}
+
 \begin{lstlisting}[language=matlab]
 function [D, V, flag, AB] = position_diameter(S, theta)
 %POSITION_DIAMETER 问题1：交会定位区域直径（向量化暴力求直径）
@@ -1034,6 +1036,2051 @@ function z = cross2(a, b)
 z = a(1)*b(2) - a(2)*b(1);
 end
  \end{lstlisting}
+
+\begin{lstlisting}[language=matlab]
+% draw_counterexample.m
+% 绘制等边三角形反例：以三角形直径为直径的圆无法覆盖该三角形，而最小覆盖圆的半径更大。
+% 生成无标题的图像。
+
+function draw_counterexample()
+    root = fileparts(mfilename('fullpath'));
+    cd(root);
+    
+    % 等边三角形顶点，边长 D = 1
+    D = 1;
+    % 顶点
+    V1 = [0; 0];
+    V2 = [D; 0];
+    V3 = [D/2; D*sqrt(3)/2];
+    
+    % 最小覆盖圆 (外接圆)
+    % 中心 C
+    C = [D/2; D*sqrt(3)/6];
+    % 半径 R_MEC = D/sqrt(3)
+    R_MEC = D/sqrt(3);
+    
+    % 直径为 D 的圆（设圆心也为C，这样最能覆盖更多的点）
+    R_D = D/2;
+    
+    f = figure('Color', 'w', 'Position', [200, 200, 600, 600], 'Visible', 'off');
+    hold on;
+    axis equal;
+    
+    % 画等边三角形
+    fill([V1(1), V2(1), V3(1)], [V1(2), V2(2), V3(2)], [0.9 0.9 0.9], 'EdgeColor', 'k', 'LineWidth', 1.5, 'DisplayName', '等边三角形区域 K');
+    
+    % 画最小覆盖圆
+    theta = linspace(0, 2*pi, 200);
+    plot(C(1) + R_MEC*cos(theta), C(2) + R_MEC*sin(theta), 'b-', 'LineWidth', 2, 'DisplayName', '最小覆盖圆 (半径 D/\surd3)');
+    
+    % 画直径为 D 的圆
+    plot(C(1) + R_D*cos(theta), C(2) + R_D*sin(theta), 'r--', 'LineWidth', 2, 'DisplayName', '直径为 D 的圆 (半径 D/2)');
+    
+    % 画出三角形的顶点
+    plot([V1(1), V2(1), V3(1)], [V1(2), V2(2), V3(2)], 'k.', 'MarkerSize', 15, 'HandleVisibility', 'off');
+    
+    % 标注中心点
+    plot(C(1), C(2), 'k+', 'MarkerSize', 8, 'HandleVisibility', 'off');
+    
+    % 图例和坐标系设置
+    legend('Location', 'southoutside', 'FontSize', 12);
+    axis off;
+    
+    % 保存图像
+    save_path = fullfile(root, 'counterexample_triangle.png');
+    exportgraphics(f, save_path, 'Resolution', 300, 'BackgroundColor', 'white');
+    close(f);
+    fprintf('反例图像已保存至: %s\n', save_path);
+end
+\end{lstlisting}
+
+\begin{lstlisting}[language=matlab]
+%% 示例：问题1 定位区域直径计算
+%  输入项（两项都要用户自行输入）：
+%     S     - 检测点坐标 (x,y)，每行一个点，单位：米
+%     theta - 各检测点的示向度（方位角），单位：度，范围 [0,360)
+clc; clear;
+
+% ================== 自行修改：检测点坐标 与 示向度 ==================
+% 每一行是一个检测点 (x, y)，对应 theta 里同一行的示向度（度）
+% 想增加/减少检测点，只需同步增删 S 与 theta 的行数
+
+% --- 示例1：两个检测点 ---
+S = [   0,   0;      % 检测点1 坐标
+     1000,   0 ];    % 检测点2 坐标
+theta = [90; 135];   % 检测点1、2 的示向度（度）
+
+% --- 示例2：三个检测点（取消注释即可用）---
+% S = [   0,   0;
+%      1000,   0;
+%        0, 800 ];
+% theta = [90; 135; 30];
+
+% --- 示例3：交互式输入（取消注释即可用）---
+% n = input('请输入检测点个数 n = ');
+% S = zeros(n, 2); theta = zeros(n, 1);
+% for i = 1:n
+%     fprintf('检测点 %d:\n', i);
+%     S(i,:)     = input('   坐标 [x, y]（米）= ');
+%     theta(i)   = input('   示向度（度 [0,360)）= ');
+% end
+
+% ==================================================================
+
+[D, V, flag, AB] = position_diameter(S, theta);
+
+fprintf('========================================\n');
+fprintf('定位区域直径  D = %.4f 米\n', D);
+fprintf('有界性  flag = %d（1=有界，0=无界）\n', flag);
+fprintf('定位区域顶点（逆时针，m×2）:\n');
+disp(V);
+fprintf('直径两端点 AB（旋转卡壳求出）:\n');
+disp(AB);
+fprintf('========================================\n');
+
+% 可视化（可选）
+figure; hold on; axis equal;
+if ~isempty(V)
+    plot([V(:,1); V(1,1)], [V(:,2); V(1,2)], 'k-', 'LineWidth', 1.5); % 定位区域边界
+    fill(V(:,1), V(:,2), [0.9 0.95 1]);                                % 填充
+end
+plot(S(:,1), S(:,2), 'ro', 'MarkerFaceColor', 'r', 'MarkerSize', 7);   % 检测点
+for i = 1:size(S,1)
+    text(S(i,1)+20, S(i,2)+20, sprintf('S%d', i));
+    u = [cosd(theta(i)), sind(theta(i))];
+    quiver(S(i,1), S(i,2), 300*u(1), 300*u(2), 0, 'r--', 'LineWidth', 1);
+end
+% 画出直径线段（旋转卡壳求出的两个端点连线）
+if ~isempty(AB) && size(AB,1) == 2
+    plot(AB(:,1), AB(:,2), 'b-', 'LineWidth', 2.5);
+    plot(AB(:,1), AB(:,2), 'bs', 'MarkerFaceColor', 'b', 'MarkerSize', 8);
+end
+title(sprintf('定位区域直径 D = %.2f m（蓝线为直径）', D));
+grid on;
+\end{lstlisting}
+
+\begin{lstlisting}[language=matlab]
+function D = diameter_many(V)
+%DIAMETER_MANY 批量计算多个凸多边形的直径（向量化，R2016b+ 隐式扩展）
+%   D = diameter_many(V)
+%
+%   输入 V: 1×P cell 数组，V{p} 为第 p 个多边形的顶点（m_p×2，逆时针）
+%   输出 D: P×1 各多边形的直径（米）
+%
+%   原理：凸多边形直径 = 顶点对最大距离。
+%   顶点少、多边形多时，瓶颈是逐多边形循环；本函数把所有多边形堆成三维数组，
+%   用隐式扩展一次性算完所有顶点对距离，全程向量化（仅堆叠一步有循环）。
+
+    P    = numel(V);
+    mmax = max(cellfun(@(v) size(v,1), V));
+
+    % 堆成 mmax×2×P 三维数组，缺省顶点用 NaN 填充
+    X = NaN(mmax, 2, P);
+    for p = 1:P
+        X(1:size(V{p},1), :, p) = V{p};
+    end
+
+    % 所有顶点对 (i,j) 的坐标差：mmax×mmax×P（隐式扩展，无双重循环）
+    dx = X(:,1,:) - permute(X(:,1,:), [2 1 3]);   % x_i - x_j
+    dy = X(:,2,:) - permute(X(:,2,:), [2 1 3]);   % y_i - y_j
+    D2 = dx.^2 + dy.^2;                           % 所有顶点对平方距离
+
+    D2(isnan(D2)) = 0;        % NaN（补位处）置 0，不影响取最大值
+
+    D = sqrt(max(D2, [], [1 2]));   % 1×1×P
+    D = squeeze(D);                 % P×1
+end
+\end{lstlisting}
+
+\subsection{问题二相关代码}
+
+% main_problem2.m
+\begin{lstlisting}[language=matlab]
+function [out, V, S] = main_problem2(mode)
+%MAIN_PROBLEM2 默认仅搜索、绘图与导出；'verify' 单独验证，'full' 另做敏感性分析。
+if nargin == 0, mode = 'run'; end
+assert(any(strcmp(mode, {'run','verify','full'})), '模式应为 run、verify 或 full。');
+root = fileparts(mfilename('fullpath'));
+old = pwd; cleanup = onCleanup(@() cd(old));
+cd(root); addpath(genpath(root));
+cfg = config_problem2();
+if ~isfolder(cfg.results_dir), mkdir(cfg.results_dir); end
+if ~isfolder(cfg.fig_dir), mkdir(cfg.fig_dir); end
+out = []; V = []; S = [];
+t_all = tic;
+fprintf('问题二：第二检测点选择 | MATLAB %s\n', version);
+if any(strcmp(mode, {'verify','full'}))
+    V = verify_problem2();
+    assert(V.nfail == 0, '验证失败，请检查 results/verify_results.mat。');
+    if strcmp(mode, 'verify'), return; end
+end
+out = outer_search(cfg);
+if strcmp(mode, 'full'), S = sensitivity(out, cfg); end
+plot_problem2(cfg, out);
+out.t_run = toc(t_all);
+export_problem2(out, cfg);
+save(fullfile(cfg.results_dir, 'out.mat'), 'out', 'cfg', 'V', 'S', '-v7');
+fprintf('完成：搜索 %.2f s，总计 %.2f s（均不含 MATLAB 启动）。\n', out.t_total, out.t_run);
+fprintf('数值及论文数据：results/；图：figures/。\n');
+end
+
+
+\end{lstlisting}
+
+% problem2_discrete_sweep.m
+\begin{lstlisting}[language=matlab]
+function problem2_discrete_sweep()
+% PROBLEM2_DISCRETE_SWEEP 基于 Kershner 定理和集合覆盖规划离散检测点及 TSP 最短路
+    
+    R = 56.5; % 最坏误差半径
+    r = 20;   % 探测半径
+    v = 5;    % 移动速度 5m/s (假设)
+    t_measure = 5; % 每次测量耗时 5s
+    
+    fprintf('=== 问题2：离散检测点全覆盖路径规划 ===\n');
+    fprintf('误差半径 R = %.1f m, 探测半径 r = %.1f m\n', R, r);
+    
+    % 1. 离散化被覆盖区域 D(0, R)
+    [X, Y] = meshgrid(linspace(-R, R, 150));
+    mask = X.^2 + Y.^2 <= R^2;
+    Px = X(mask); Py = Y(mask);
+    N_target = length(Px);
+    
+    % 2. 基于 Kershner 正六边形密铺定理生成候选中心
+    dx = r * sqrt(3) / 2 * 0.8; 
+    dy = r * 3/4 * 0.8;
+    [CX, CY] = meshgrid(-R-r:dx:R+r, -R-r:dy:R+r);
+    shift = repmat([0, dx/2], size(CX,1), ceil(size(CX,2)/2));
+    shift = shift(:, 1:size(CX,2));
+    CX = CX + shift;
+    
+    c_mask = CX.^2 + CY.^2 <= (R+r/4)^2; 
+    Cx = CX(c_mask); Cy = CY(c_mask);
+    N_cand = length(Cx);
+    
+    % 3. 构造覆盖矩阵 A
+    A = zeros(N_target, N_cand);
+    for j = 1:N_cand
+        dist2 = (Px - Cx(j)).^2 + (Py - Cy(j)).^2;
+        A(:, j) = (dist2 <= r^2);
+    end
+    
+    % 4. 求解最小集合覆盖问题 (Set Cover ILP)
+    f = ones(N_cand, 1);
+    intcon = 1:N_cand;
+    b = -ones(N_target, 1);
+    
+    options = optimoptions('intlinprog', 'Display', 'off');
+    [x_opt, fval, exitflag] = intlinprog(f, intcon, -A, b, [], [], zeros(N_cand,1), ones(N_cand,1), options);
+    
+    if exitflag > 0
+        N_opt = round(fval);
+        sel = x_opt > 0.5;
+        Sel_X = Cx(sel); Sel_Y = Cy(sel);
+        fprintf('成功求得最小检测点数量: %d 个\n', N_opt);
+        
+        pts = [Sel_X, Sel_Y];
+        
+        % 5. 求解 TSP 遍历最短路径 (贪心 + 2-opt)
+        start_pt = [0, 0];
+        [tour_idx, tour_dist] = solve_tsp(pts, start_pt);
+        
+        total_time = N_opt * t_measure + tour_dist / v;
+        fprintf('TSP 最短行走距离: %.2f m\n', tour_dist);
+        fprintf('预估总耗时 (含 %d 次停机检测): %.2f s\n', N_opt, total_time);
+        
+        % 6. 可视化绘图
+        plot_discrete_coverage(R, r, pts, tour_idx, start_pt, tour_dist, N_opt);
+    else
+        fprintf('ILP 求解失败，无法找到全覆盖子集。\n');
+    end
+end
+
+function [best_tour, best_dist] = solve_tsp(pts, start_pt)
+    N = size(pts, 1);
+    unvisited = 1:N;
+    curr = start_pt;
+    tour = [];
+    dist = 0;
+    
+    % 贪心初始化
+    while ~isempty(unvisited)
+        [~, idx] = min(sum((pts(unvisited,:) - curr).^2, 2));
+        next = unvisited(idx);
+        dist = dist + norm(pts(next,:) - curr);
+        tour(end+1) = next;
+        curr = pts(next,:);
+        unvisited(idx) = [];
+    end
+    
+    % 简单的 2-opt 优化
+    improved = true;
+    while improved
+        improved = false;
+        for i = 1:N-2
+            for j = i+2:N
+                new_tour = tour;
+                new_tour(i+1:j) = wrev(tour(i+1:j)); % 逆序子路径
+                new_dist = calc_tour_dist(new_tour, pts, start_pt);
+                if new_dist < dist - 1e-5
+                    tour = new_tour;
+                    dist = new_dist;
+                    improved = true;
+                end
+            end
+        end
+    end
+    best_tour = tour;
+    best_dist = dist;
+end
+
+function rev = wrev(arr)
+    rev = arr(end:-1:1);
+end
+
+function d = calc_tour_dist(tour, pts, start_pt)
+    d = norm(pts(tour(1),:) - start_pt);
+    for i = 1:length(tour)-1
+        d = d + norm(pts(tour(i+1),:) - pts(tour(i),:));
+    end
+end
+
+function plot_discrete_coverage(R, r, pts, tour_idx, start_pt, tour_dist, N_opt)
+    fig = figure('Color', 'w', 'Position', [150, 150, 750, 700]);
+    hold on; axis equal;
+    
+    % 画目标误差圆
+    theta = linspace(0, 2*pi, 200);
+    plot(R*cos(theta), R*sin(theta), 'r--', 'LineWidth', 2, 'DisplayName', sprintf('最坏误差圆 (R=%.1fm)', R));
+    
+    % 画起点
+    plot(start_pt(1), start_pt(2), 'kp', 'MarkerFaceColor', 'y', 'MarkerSize', 15, 'DisplayName', '假定第二观测点(起点)');
+    
+    % 画检测点的探测范围
+    h_circle = gobjects(0);
+    for i = 1:N_opt
+        h = fill(pts(i,1)+r*cos(theta), pts(i,2)+r*sin(theta), [0.3 0.6 0.9], 'EdgeColor', 'b', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+        if i==1, h_circle = h; end
+    end
+    set(h_circle, 'DisplayName', '20m 探测覆盖区');
+    
+    % 画 TSP 路径
+    path_pts = [start_pt; pts(tour_idx, :)];
+    plot(path_pts(:,1), path_pts(:,2), 'm-', 'LineWidth', 2.5, 'DisplayName', '无人狗遍历检测路线');
+    
+    % 标记检测点序号
+    plot(pts(:,1), pts(:,2), 'mo', 'MarkerFaceColor', 'm', 'MarkerSize', 8, 'HandleVisibility', 'off');
+    for i = 1:N_opt
+        text(pts(tour_idx(i),1)+2, pts(tour_idx(i),2)+2, num2str(i), 'Color', 'k', 'FontWeight', 'bold', 'FontSize', 12);
+    end
+    
+    title(sprintf('基于正六边形密铺的最优离散检测点全覆盖路径\n(最少停机检测点: %d 个, 路线长度: %.2f m)', N_opt, tour_dist), 'FontSize', 13);
+    xlabel('X 坐标 (m)'); ylabel('Y 坐标 (m)');
+    legend('Location', 'northeastoutside', 'FontSize', 10);
+    grid on; xlim([-R-r-5, R+r+5]); ylim([-R-r-5, R+r+5]);
+    
+    out_file = fullfile(fileparts(mfilename('fullpath')), 'results', 'problem2_discrete_coverage.png');
+    saveas(fig, out_file);
+    fprintf('绘图成功！已保存至: %s\n', out_file);
+end
+
+\end{lstlisting}
+
+% problem2_sweep_path.m
+\begin{lstlisting}[language=matlab]
+function problem2_sweep_path()
+% PROBLEM2_SWEEP_PATH 自适应计算并证明任意误差半径 R 下的最短全覆盖路径
+% 不仅输出最坏情况 (R=56.5m) 的覆盖图，还生成 R 属于 [21, 56.5] 时的最优路径长度曲线。
+
+    r = 20; % 仪器的探测半径
+    
+    % ==========================================
+    % 1. 计算不同 R 下的最优路径长度 (证明普适性)
+    % ==========================================
+    fprintf('正在验证任意 R 属于 (20, 56.5] 的自适应最优全覆盖路径...\n');
+    R_array = linspace(21, 56.5, 30);
+    L_array = zeros(size(R_array));
+    
+    for i = 1:length(R_array)
+        R = R_array(i);
+        [L_array(i), ~] = optimize_sweep(R, r, false);
+    end
+    
+    % 绘制 L - R 关系曲线
+    fig1 = figure('Color', 'w', 'Position', [100, 100, 700, 500]);
+    plot(R_array, L_array, 'b-', 'LineWidth', 2.5);
+    hold on;
+    % 标注分界点
+    xline(40, 'r--', 'LineWidth', 1.5, 'Label', '拓扑相变点 (R=40m)');
+    plot(R_array, L_array, 'bo', 'MarkerFaceColor', 'w', 'MarkerSize', 4);
+    
+    title('最短全覆盖路径长度 L 随误差圆半径 R 的变化规律', 'FontSize', 14);
+    xlabel('未知误差圆半径 R (m)', 'FontSize', 12);
+    ylabel('最优全覆盖路径长度 L (m)', 'FontSize', 12);
+    grid on;
+    
+    text(25, 250, '2趟扫线 (U型拓扑)', 'FontSize', 12, 'Color', 'k');
+    text(45, 250, '3趟扫线 (S型拓扑)', 'FontSize', 12, 'Color', 'k');
+    
+    out_file1 = fullfile(fileparts(mfilename('fullpath')), 'results', 'problem2_LR_curve.png');
+    if ~isfolder(fileparts(out_file1)), mkdir(fileparts(out_file1)); end
+    saveas(fig1, out_file1);
+    fprintf('规律证明曲线已保存至: %s\n', out_file1);
+    
+    % ==========================================
+    % 2. 针对最坏情况 (R = 56.5) 生成具体清扫路线图
+    % ==========================================
+    R_worst = 56.5;
+    [L_worst, pts_worst] = optimize_sweep(R_worst, r, true);
+    
+    fprintf('\n===== 优化完成 =====\n');
+    fprintf('最坏情况 (R=%.1f m) 下的最短全覆盖路径总长度: %.2f m\n', R_worst, L_worst);
+    
+    plot_sweep_result(pts_worst, R_worst, r, L_worst);
+end
+
+function [fval, pts] = optimize_sweep(R, r, verbose)
+    % 生成高密度测试点
+    [X, Y] = meshgrid(linspace(-R, R, 150));
+    mask = X.^2 + Y.^2 <= R^2;
+    Px = X(mask);
+    Py = Y(mask);
+    
+    options = optimoptions('fmincon', 'Display', 'none', 'Algorithm', 'sqp', ...
+        'MaxFunctionEvaluations', 2000, 'StepTolerance', 1e-6);
+    
+    % 根据 R 动态选择扫线拓扑
+    if R <= 40
+        % 2 趟扫线 (U型拓扑)
+        x0 = [R, R/2];
+        lb = [0, 0];
+        ub = [R, R];
+        obj = @(v) 4*v(1) + 2*v(2);
+        nonlcon = @(v) constraint_2sweep(v, Px, Py, r);
+    else
+        % 3 趟扫线 (S型/割草机拓扑)
+        x0 = [R*0.8, R*0.6, R*0.8];
+        lb = [0, 0, 0];
+        ub = [R, R, R];
+        obj = @(v) 4*v(1) + 2*v(3) + 2*sqrt((v(3)-v(1))^2 + v(2)^2);
+        nonlcon = @(v) constraint_3sweep(v, Px, Py, r);
+    end
+    
+    if verbose, fprintf('开始寻优 R = %.1f m ...\n', R); end
+    [v_opt, fval] = fmincon(obj, x0, [], [], [], [], lb, ub, nonlcon, options);
+    
+    % 重建节点
+    if R <= 40
+        x1 = v_opt(1); y1 = v_opt(2);
+        pts = [x1, y1; -x1, y1; -x1, -y1; x1, -y1];
+    else
+        x1 = v_opt(1); y1 = v_opt(2); x2 = v_opt(3);
+        pts = [x1, y1; -x1, y1; -x2, 0; x2, 0; x1, -y1; -x1, -y1];
+    end
+end
+
+function [c, ceq] = constraint_2sweep(v, Px, Py, r)
+    x1 = v(1); y1 = v(2); r2 = r^2;
+    d1 = dist2seg(Px, Py, x1, y1, -x1, y1);
+    d2 = dist2seg(Px, Py, -x1, y1, -x1, -y1);
+    d3 = dist2seg(Px, Py, -x1, -y1, x1, -y1);
+    min_d = min(cat(2, d1, d2, d3), [], 2);
+    c = min_d - r2 + 1e-4; 
+    ceq = [];
+end
+
+function [c, ceq] = constraint_3sweep(v, Px, Py, r)
+    x1 = v(1); y1 = v(2); x2 = v(3); r2 = r^2;
+    d1 = dist2seg(Px, Py, x1, y1, -x1, y1);
+    d2 = dist2seg(Px, Py, -x1, y1, -x2, 0);
+    d3 = dist2seg(Px, Py, -x2, 0, x2, 0);
+    d4 = dist2seg(Px, Py, x2, 0, x1, -y1);
+    d5 = dist2seg(Px, Py, x1, -y1, -x1, -y1);
+    min_d = min(cat(2, d1, d2, d3, d4, d5), [], 2);
+    c = min_d - r2 + 1e-4; 
+    ceq = [];
+end
+
+function d2 = dist2seg(px, py, ax, ay, bx, by)
+    dx = bx - ax; dy = by - ay; l2 = dx^2 + dy^2;
+    if l2 == 0
+        d2 = (px - ax).^2 + (py - ay).^2; return;
+    end
+    t = max(0, min(1, ((px - ax)*dx + (py - ay)*dy) / l2));
+    projx = ax + t * dx; projy = ay + t * dy;
+    d2 = (px - projx).^2 + (py - projy).^2;
+end
+
+function plot_sweep_result(pts, R, r, fval)
+    fig = figure('Color', 'w', 'Position', [150, 150, 750, 650]);
+    hold on; axis equal;
+    
+    n_pts = size(pts, 1);
+    h_fill = gobjects(0);
+    for i=1:(n_pts-1)
+        h = plot_capsule(pts(i,1), pts(i,2), pts(i+1,1), pts(i+1,2), r);
+        if i==1, h_fill = h; end
+    end
+    set(h_fill, 'DisplayName', '20m 探测仪扫掠覆盖区');
+    
+    theta = linspace(0, 2*pi, 200);
+    plot(R*cos(theta), R*sin(theta), 'r--', 'LineWidth', 2, 'DisplayName', sprintf('未知干扰源可能区域 (R=%.1fm)', R));
+    plot(0, 0, 'rx', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName', '最坏误差圆心');
+    plot(pts(:,1), pts(:,2), 'b-', 'LineWidth', 2.5, 'DisplayName', '无人狗最短覆盖路径');
+    plot(pts(:,1), pts(:,2), 'bo', 'MarkerFaceColor', 'w', 'MarkerSize', 5, 'HandleVisibility', 'off');
+    plot(pts(1,1), pts(1,2), 'gp', 'MarkerFaceColor', 'g', 'MarkerSize', 15, 'DisplayName', '路径起点');
+    plot(pts(end,1), pts(end,2), 'ks', 'MarkerFaceColor', 'k', 'MarkerSize', 10, 'DisplayName', '路径终点');
+    
+    title(sprintf('最坏情况 (R=%.1fm) 的最短全覆盖扫雷路径 (L=%.2fm)', R, fval), 'FontSize', 13);
+    xlabel('X 坐标 (m)'); ylabel('Y 坐标 (m)');
+    legend('Location', 'northeastoutside', 'FontSize', 10);
+    grid on; xlim([-R-r-5, R+r+5]); ylim([-R-r-5, R+r+5]);
+    
+    out_file = fullfile(fileparts(mfilename('fullpath')), 'results', 'problem2_coverage_path.png');
+    saveas(fig, out_file);
+    fprintf('覆盖区域绘图成功！已保存至: %s\n', out_file);
+end
+
+function h = plot_capsule(ax, ay, bx, by, r)
+    dir = [bx-ax, by-ay]; len = norm(dir);
+    if len == 0
+        theta = linspace(0, 2*pi, 50);
+        h = fill(ax+r*cos(theta), ay+r*sin(theta), [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+        return;
+    end
+    dir = dir / len; perp = [-dir(2), dir(1)];
+    p1 = [ax, ay] + r*perp; p2 = [bx, by] + r*perp;
+    p3 = [bx, by] - r*perp; p4 = [ax, ay] - r*perp;
+    h = fill([p1(1) p2(1) p3(1) p4(1)], [p1(2) p2(2) p3(2) p4(2)], [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+    theta = linspace(0, 2*pi, 30);
+    fill(ax+r*cos(theta), ay+r*sin(theta), [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+    fill(bx+r*cos(theta), by+r*sin(theta), [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+end
+
+\end{lstlisting}
+
+% get_continuous_region.m
+\begin{lstlisting}[language=matlab]
+% get_continuous_region.m
+% 读取 results/out.mat，利用真实的评价函数 eval_P_bounds 在候选点附近进行密集网格采样，
+% 从而找出严格满足精度容差 (U(P) <= m_hat + epsilon) 的连续可行区域，并绘制热力图。
+% 输出两张图：局部图（fig4_continuous_region_local.png）和全局图（fig4_continuous_region_global.png）
+
+function get_continuous_region()
+    root = fileparts(mfilename('fullpath'));
+    old = pwd; cleanup = onCleanup(@() cd(old));
+    cd(root); addpath(genpath(root));
+    
+    fprintf('正在加载结果数据...\n');
+    load('results/out.mat', 'out', 'cfg');
+    
+    P_fines = [out.fines.P];
+    Q = P_fines(:, out.near_indices);
+    
+    % 目标阈值
+    threshold = out.m_hat + cfg.tau_m;
+    fprintf('真实的最优上界基准 m_hat = %.4f m\n', out.m_hat);
+    fprintf('寻找满足 U(P) <= %.4f m (m_hat + %.1f) 的连续区域\n', threshold, cfg.tau_m);
+    
+    cfg.kill_threshold = threshold;
+    cfg.eval_tol = cfg.tol_fine;
+    cfg.eval_budget = 400;
+    
+    [Eb,~] = E_polygon(cfg);
+    
+    % ================= 1. 局部图计算 =================
+    if out.P_f2(2) > 0
+        Q_local = Q(:, Q(2,:) > 0);
+    else
+        Q_local = Q(:, Q(2,:) < 0);
+    end
+    
+    margin_l = 15;
+    min_x_l = min(Q_local(1,:)) - margin_l; max_x_l = max(Q_local(1,:)) + margin_l;
+    min_y_l = min(Q_local(2,:)) - margin_l; max_y_l = max(Q_local(2,:)) + margin_l;
+    
+    grid_size_l = 50;
+    x_vec_l = linspace(min_x_l, max_x_l, grid_size_l);
+    y_vec_l = linspace(min_y_l, max_y_l, grid_size_l);
+    [X_l, Y_l] = meshgrid(x_vec_l, y_vec_l);
+    Z_U_l = NaN(size(X_l));
+    
+    fprintf('开始对局部的 %dx%d 网格进行严密计算...\n', grid_size_l, grid_size_l);
+    tic;
+    for i = 1:numel(X_l)
+        P_test = [X_l(i); Y_l(i)];
+        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:)), continue; end
+        res = eval_P_bounds(P_test, cfg);
+        Z_U_l(i) = res.U;
+    end
+    fprintf('局部网格计算完成，耗时 %.2f 秒。\n', toc);
+    
+    % ================= 2. 全局图计算 =================
+    margin_g = 15;
+    min_x_g = min(Eb(1,:)) - margin_g; max_x_g = max(Eb(1,:)) + margin_g;
+    min_y_g = min(Eb(2,:)) - margin_g; max_y_g = max(Eb(2,:)) + margin_g;
+    
+    grid_size_g = 60;
+    x_vec_g = linspace(min_x_g, max_x_g, grid_size_g);
+    y_vec_g = linspace(min_y_g, max_y_g, grid_size_g);
+    [X_g, Y_g] = meshgrid(x_vec_g, y_vec_g);
+    Z_U_g = NaN(size(X_g));
+    
+    fprintf('开始对全局的 %dx%d 网格进行严密计算...\n', grid_size_g, grid_size_g);
+    tic;
+    for i = 1:numel(X_g)
+        P_test = [X_g(i); Y_g(i)];
+        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:)), continue; end
+        res = eval_P_bounds(P_test, cfg);
+        Z_U_g(i) = res.U;
+    end
+    fprintf('全局网格计算完成，耗时 %.2f 秒。\n', toc);
+    
+    levels = linspace(out.m_hat, threshold, 6);
+    
+    % ================= 绘制局部图 =================
+    fl = figure('Color', 'w', 'Position', [100 100 850 650], 'Visible', 'off');
+    hold on;
+    contourf(X_l, Y_l, Z_U_l, levels, 'LineStyle', 'none');
+    colormap(flipud(parula));
+    colorbar('Ticks', levels, 'TickLabels', arrayfun(@(x) sprintf('%.2f', x), levels, 'UniformOutput', false));
+    [~, h_cl] = contour(X_l, Y_l, Z_U_l, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
+    plot(Eb(1,:), Eb(2,:), 'k.', 'MarkerSize', 2, 'DisplayName', 'Region E Boundary');
+    scatter(Q(1,:), Q(2,:), 40, 'mo', 'filled', 'MarkerEdgeColor', 'w', 'DisplayName', 'Discrete Candidates');
+    plot(out.P_f2(1), out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Point P');
+    axis equal; grid on;
+    xlim([min_x_l, max_x_l]); ylim([min_y_l, max_y_l]);
+    xlabel('x (m)'); ylabel('y (m)');
+    legend('Location', 'best');
+    
+    save_path_l = fullfile(cfg.fig_dir, 'fig4_continuous_region_local.png');
+    exportgraphics(fl, save_path_l, 'Resolution', 250, 'BackgroundColor', 'white');
+    close(fl);
+    
+    % ================= 绘制全局图 =================
+    fg = figure('Color', 'w', 'Position', [200 200 850 650], 'Visible', 'off');
+    hold on;
+    contourf(X_g, Y_g, Z_U_g, levels, 'LineStyle', 'none');
+    colormap(flipud(parula));
+    colorbar('Ticks', levels, 'TickLabels', arrayfun(@(x) sprintf('%.2f', x), levels, 'UniformOutput', false));
+    [~, h_cg] = contour(X_g, Y_g, Z_U_g, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
+    plot(Eb(1,:), Eb(2,:), 'k-', 'LineWidth', 1.5, 'DisplayName', 'Region E Boundary');
+    scatter(Q(1,:), Q(2,:), 20, 'mo', 'filled', 'MarkerEdgeColor', 'w', 'DisplayName', 'Discrete Candidates');
+    
+    plot(out.P_f2(1), out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Point P');
+    plot(out.P_f2(1), -out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'HandleVisibility', 'off');
+    
+    axis equal; grid on;
+    xlim([min_x_g, max_x_g]); ylim([min_y_g, max_y_g]);
+    xlabel('x (m)'); ylabel('y (m)');
+    legend('Location', 'best');
+    
+    save_path_g = fullfile(cfg.fig_dir, 'fig4_continuous_region_global.png');
+    exportgraphics(fg, save_path_g, 'Resolution', 250, 'BackgroundColor', 'white');
+    close(fg);
+    
+    fprintf('已将全局和局部的连续区域分布图保存至 figures 目录\n');
+end
+
+\end{lstlisting}
+
+\subsection{问题三相关代码}
+
+% problem3_compare_monte_carlo.m
+\begin{lstlisting}[language=matlab]
+function [comparison, summary] = problem3_compare_monte_carlo(trials, seed, scenario)
+% 在完全相同的干扰源案例上，对比基础款和优化款问题三算法。
+% [comparison,summary] = problem3_compare_monte_carlo(200,20260912,'uniform');
+% scenario：uniform / edge / cluster / extreme。
+% 两算法共享源数、频道、位置、接收半径及“位置-频道”固定误差场；
+% 策略只接收模拟HTTP反馈，绝不读取场景真值。
+if nargin<1, trials=200; end
+if nargin<2, seed=20260912; end
+if nargin<3, scenario='uniform'; end
+validateattributes(trials,{'numeric'},{'scalar','integer','positive'});
+assert(ismember(scenario,{'uniform','edge','cluster','extreme'}),'未知场景。');
+root=fileparts(mfilename('fullpath')); addpath(root);
+world=RandStream('mt19937ar','Seed',seed);
+oldRng=rng; cleanup=onCleanup(@() rng(oldRng));
+values=zeros(2*trials,13); algorithms=strings(2*trials,1); errors=strings(2*trials,1);
+solvers={@problem3_solver,@problem3_solver_optimized}; labels=["base" "optimized"];
+for trial=1:trials
+    n=randi(world,[10,16]); channels=randperm(world,20,n);
+    theta=2*pi*rand(world,1,n); rho=1800*sqrt(rand(world,1,n));
+    xy=[rho.*cos(theta);rho.*sin(theta)]; radius=1000+500*rand(world,1,n);
+    if strcmp(scenario,'edge')
+        xy=1800*[cos(theta);sin(theta)]; radius(:)=1000;
+    elseif strcmp(scenario,'cluster')
+        c=1400*[cos(theta(1));sin(theta(1))];
+        xy=c+150*randn(world,2,n); xy=xy.*min(1,1800./vecnorm(xy));
+    elseif strcmp(scenario,'extreme')
+        xy(:,1)=[0;0]; xy(:,2)=[1800;0]; radius(:)=1000;
+    end
+    for a=1:2
+        rng(seed+trial); % 两算法的随机包围圆从同一状态开始
+        [m,err]=runCase(solvers{a},channels,xy,radius,seed+104729*trial,scenario);
+        row=2*(trial-1)+a;
+        values(row,:)=[trial,n,m]; algorithms(row)=labels(a); errors(row)=err;
+    end
+    b=values(2*trial-1,5); o=values(2*trial,5);
+    fprintf('%4d/%d | N=%2d | 基础 %.1f s/源 | 优化 %.1f s/源 | 节省 %.1f s/源\n', ...
+        trial,trials,n,b,o,b-o);
+end
+comparison=array2table(values,'VariableNames',{'Trial','N','Cleared','Total_s', ...
+    'Average_s','Runtime_s','Complete','Move_s','Switch_s','Measure_s', ...
+    'OpticalLaser_s','FinalCheck_s','AnchorRadius_m'});
+comparison.Algorithm=algorithms; comparison.Error=errors;
+comparison=movevars(comparison,{'Algorithm','Error'},'After','Trial');
+b=comparison(comparison.Algorithm=="base",:);
+o=comparison(comparison.Algorithm=="optimized",:);
+summary=table(labels', [mean(b.Average_s);mean(o.Average_s)], ...
+    [sum(b.Total_s)/sum(b.Cleared);sum(o.Total_s)/sum(o.Cleared)], ...
+    [mean(b.Total_s);mean(o.Total_s)], [mean(b.Move_s);mean(o.Move_s)], ...
+    [mean(b.Measure_s);mean(o.Measure_s)], [mean(b.Complete);mean(o.Complete)], ...
+    [mean(b.Average_s<300);mean(o.Average_s<300)], ...
+    'VariableNames',{'Algorithm','MeanAverage_s','PooledAverage_s','MeanTotal_s', ...
+    'MeanMove_s','MeanMeasure_s','FullClearRate','Below300Rate'});
+delta=b.Average_s-o.Average_s;
+fprintf('\n%s场景：基础 %.2f，优化 %.2f s/源；平均节省 %.2f s/源（%.1f%%）。\n', ...
+    scenario,mean(b.Average_s),mean(o.Average_s),mean(delta),100*mean(delta)/mean(b.Average_s));
+fprintf('全清率：基础 %.1f%%，优化 %.1f%%；低于300 s：基础 %.1f%%，优化 %.1f%%。\n', ...
+    100*mean(b.Complete),100*mean(o.Complete),100*mean(b.Average_s<300),100*mean(o.Average_s<300));
+folder=fullfile(root,'问题3优化结果'); if ~isfolder(folder), mkdir(folder); end
+prefix=fullfile(folder,['problem3_compare_' scenario]);
+writetable(comparison,[prefix '_runs.csv']); writetable(summary,[prefix '_summary.csv']);
+save([prefix '.mat'],'comparison','summary','seed','scenario');
+f=figure('Color','w','Visible','off','Position',[100 100 900 650]);
+tiledlayout(2,1);
+nexttile; hb=plot(b.Average_s,'o-','DisplayName','基础款'); hold on;
+ho=plot(o.Average_s,'o-','DisplayName','优化款');
+yline(300,'r--','300 s','HandleVisibility','off');
+ylabel('Time per source (s)'); legend([hb,ho],'Location','best');
+title(sprintf('%s: paired Monte Carlo comparison',scenario)); grid on;
+nexttile; bar(delta); yline(0,'k-'); xlabel('Paired trial');
+ylabel('Base - optimized (s/source)'); grid on;
+set(findall(f,'Type','axes'),'Color','w','XColor','k','YColor','k','GridColor',[.3 .3 .3]);
+set(findall(f,'Type','text'),'Color','k');
+exportgraphics(f,[prefix '.png'],'Resolution',150); close(f);
+end
+
+function [metrics,errText]=runCase(solver,channels,xy,radius,noiseSeed,scenario)
+% 单案例封闭模拟器；真实数据不进入solver，仅通过四种接口结果反馈。
+n=numel(channels); live=true(1,n); p=[0;0]; ch=1; t=0; parts=zeros(1,4);
+clearTimes=[]; errText=""; result=struct(); start=tic;
+try
+    result=solver(@simulator);
+catch err
+    errText=string(err.message);
+end
+count=sum(~live); average=t/max(1,count); if count==0, average=inf; end
+complete=~any(live) && isfield(result,'complete') && result.complete;
+tail=nan; if ~isempty(clearTimes), tail=t-max(clearTimes); end
+anchorRadius=nan;
+if isfield(result,'anchorRadius'), anchorRadius=result.anchorRadius; end
+assert(abs(t-sum(parts))<1e-6,'模拟计时分项不守恒。');
+metrics=[count,t,average,toc(start),complete,parts,tail,anchorRadius];
+
+    function z=simulator(path,request)
+        z=struct('accepted',true,'virtual_time_s',t);
+        if strcmp(path,'/enter'), z.remaining_real_duration_s=1200; return; end
+        if strcmp(path,'/exit'), z.exit_reason='user_exit'; return; end
+        q=[request.position.x;request.position.y]; k=request.channel;
+        dt=norm(q-p)/5; parts(1)=parts(1)+dt; t=t+dt; p=q;
+        j=find(channels==k & live,1); d=inf;
+        if ~isempty(j), d=norm(xy(:,j)-p); end
+        if strcmp(path,'/measure')
+            sw=double(ch~=k); ch=k; t=t+sw+5;
+            parts(2)=parts(2)+sw; parts(3)=parts(3)+5;
+            if isempty(j)||d>radius(j), z.measure_result='no_signal';
+            elseif d<=5, z.measure_result='near';
+            else
+                % 确定性伪随机误差场：同一案例、频道、地点给两个算法相同误差。
+                w=sin(q(1)*12.9898+q(2)*78.233+k*37.719+noiseSeed*.013)*43758.5453;
+                e=2*(w-floor(w))-1;
+                if strcmp(scenario,'extreme'), e=sign(e); end
+                v=xy(:,j)-p; z.measure_result='direction';
+                z.svd_deg=mod(round(atan2d(v(2),v(1))+e,2),360);
+            end
+        else
+            ok=d<=20; dt=3+2*ok; t=t+dt; parts(4)=parts(4)+dt;
+            if ok
+                live(j)=false; z.clear_result='success'; clearTimes(end+1)=t;
+            else
+                z.clear_result='no_target_in_range';
+            end
+        end
+        z.virtual_time_s=t;
+    end
+end
+
+\end{lstlisting}
+
+% problem3_monte_carlo.m
+\begin{lstlisting}[language=matlab]
+function [runs, sources] = problem3_monte_carlo(trials, seed, scenario)
+% 蒙特卡洛仿真；仅调用 problem3_solver 的同一套策略，不复制或另写算法。
+% [runs,sources] = problem3_monte_carlo(200,20260912);
+% 压力场景：'edge'（边界、1000m接收）、'cluster'（聚集）、'extreme'（误差端点）。
+% 默认：源数在10:16均匀取值，位置在圆内面积均匀，频道无放回抽样，
+% 接收半径在[1000,1500]均匀。它们是本地实验假设，不是官方案例分布。
+% 同地点同频道的误差固定；新地点误差独立均匀，且保留两位小数。
+% 输出逐次总时间/平均清除时间，及逐源首次发现、清除时刻、清除间隔。
+% Average_s = Total_s/Cleared，包含最后查漏；逐源清除间隔本身不含最后查漏。
+if nargin<1, trials=200; end
+if nargin<2, seed=20260912; end
+if nargin<3, scenario='uniform'; end
+validateattributes(trials,{'numeric'},{'scalar','integer','positive'});
+assert(ismember(scenario,{'uniform','edge','cluster','extreme'}),'未知场景。');
+root = fileparts(mfilename('fullpath'));
+records = zeros(trials,11); sourceRows = zeros(0,6); errors = strings(trials,1);
+% 单独的随机流确保包围圆工具内的 randperm 不会改变场景或测量噪声。
+world = RandStream('mt19937ar','Seed',seed);
+oldRng=rng; cleanup=onCleanup(@() rng(oldRng)); rng(seed); % 固定几何工具随机序
+for trial=1:trials
+    n=randi(world,[10,16]); channels=randperm(world,20,n);
+    theta=2*pi*rand(world,1,n); rho=1800*sqrt(rand(world,1,n));
+    xy=[rho.*cos(theta);rho.*sin(theta)]; radius=1000+500*rand(world,1,n);
+    if strcmp(scenario,'edge')
+        xy=1800*[cos(theta);sin(theta)]; radius(:)=1000;
+    elseif strcmp(scenario,'cluster')
+        c=1400*[cos(theta(1));sin(theta(1))];
+        xy=c+150*randn(world,2,n);
+        xy=xy.*min(1,1800./vecnorm(xy));
+    elseif strcmp(scenario,'extreme')
+        xy(:,1)=[0;0]; xy(:,2)=[1800;0]; radius(:)=1000;
+    end
+    live=true(1,n); p=[0;0]; ch=1; t=0; parts=zeros(1,4);
+    noise=containers.Map('KeyType','char','ValueType','double');
+    noiseRng=RandStream('mt19937ar','Seed',seed+trial);
+    start=tic; complete=false; why=""; result=struct(); tail=nan;
+    try
+        result=problem3_solver(@simulator);
+        complete=result.complete && ~any(live);
+        ids=find(isfinite(result.clearTime));
+        [times,order]=sort(result.clearTime(ids)); ids=ids(order);
+        gaps=diff([0,times]);
+        if ~isempty(times), tail=t-times(end); end % 最后一次清除后的查漏时间
+        sourceRows=[sourceRows;[repmat(trial,numel(ids),1),ids', ...
+            result.discoveryTime(ids)',times',gaps', ...
+            (times-result.discoveryTime(ids))']]; %#ok<AGROW>
+    catch err
+        why=string(err.message); % 保留失败案例，不剔除后计算漂亮的均值
+    end
+    count=sum(~live); avg=t/max(1,count);
+    if count==0, avg=inf; end
+    records(trial,:)=[n,count,t,avg,toc(start),complete,parts,tail]; errors(trial)=why;
+    fprintf('%4d/%d | %2d/%2d | 总 %.1f s | 平均 %.1f s | 全清 %d\n', ...
+        trial,trials,count,n,t,avg,complete);
+    assert(abs(t-sum(parts))<1e-6,'计时分项不守恒。');
+end
+runs=array2table(records,'VariableNames',{'N','Cleared','Total_s','Average_s', ...
+    'Runtime_s','Complete','Move_s','Switch_s','Measure_s','OpticalLaser_s','FinalCheck_s'});
+runs.Error=errors;
+sources=array2table(sourceRows,'VariableNames',{'Trial','Channel','Discovery_s', ...
+    'Clear_s','ClearInterval_s','DiscoveryToClear_s'});
+folder=fullfile(root,'问题3结果'); if ~isfolder(folder), mkdir(folder); end
+prefix=fullfile(folder,['problem3_mc_' scenario]);
+writetable(runs,[prefix '_runs.csv']); writetable(sources,[prefix '_sources.csv']);
+save([prefix '.mat'],'runs','sources','seed','scenario','result');
+fprintf('\n全清率 %.1f%%；逐次平均耗时的均值 %.2f s；总时间/总清除数 %.2f s\n', ...
+    100*mean(runs.Complete),mean(runs.Average_s),sum(runs.Total_s)/sum(runs.Cleared));
+fprintf('同时满足全清且平均<300s：%.1f%%；最慢一局平均 %.2f s\n', ...
+    100*mean(runs.Complete & runs.Average_s<300),max(runs.Average_s));
+f=figure('Color','w','Visible','off');
+tiledlayout(2,1);
+nexttile; plot(runs.Total_s,'o-'); ylabel('Total time (s)'); grid on;
+nexttile; plot(runs.Average_s,'o-'); yline(300,'r--','300 s');
+xlabel('Trial'); ylabel('Time per cleared source (s)'); grid on;
+set(findall(f,'Type','axes'),'Color','w','XColor','k','YColor','k','GridColor',[.3 .3 .3]);
+set(findall(f,'Type','text'),'Color','k');
+exportgraphics(f,[prefix '.png'],'Resolution',150); close(f);
+
+    function z=simulator(path,request)
+        % 真值仅封闭于此接口中；不向策略泄露个数、坐标、距离或接收半径。
+        z=struct('accepted',true,'virtual_time_s',t);
+        if strcmp(path,'/enter'), z.remaining_real_duration_s=1200; return; end
+        if strcmp(path,'/exit'), z.exit_reason='user_exit'; return; end
+        q=[request.position.x;request.position.y]; k=request.channel;
+        dt=norm(q-p)/5; parts(1)=parts(1)+dt; t=t+dt; p=q;
+        j=find(channels==k & live,1); d=inf;
+        if ~isempty(j), d=norm(xy(:,j)-p); end
+        if strcmp(path,'/measure')
+            sw=double(ch~=k); ch=k; t=t+sw+5;
+            parts(2)=parts(2)+sw; parts(3)=parts(3)+5;
+            if isempty(j) || d>radius(j), z.measure_result='no_signal';
+            elseif d<=5, z.measure_result='near';
+            else
+                key=sprintf('%d:%.17g:%.17g',k,p(1),p(2));
+                if ~isKey(noise,key)
+                    e=2*rand(noiseRng)-1;
+                    if strcmp(scenario,'extreme'), e=sign(e); end
+                    noise(key)=e;
+                end
+                z.measure_result='direction';
+                v=xy(:,j)-p;
+                z.svd_deg=mod(round(atan2d(v(2),v(1))+noise(key),2),360);
+            end
+        else
+            ok=d<=20; dt=3+2*ok; t=t+dt; parts(4)=parts(4)+dt;
+            if ok, live(j)=false; z.clear_result='success';
+            else, z.clear_result='no_target_in_range'; end
+        end
+        z.virtual_time_s=t;
+    end
+end
+
+\end{lstlisting}
+
+% problem3_solver.m
+\begin{lstlisting}[language=matlab]
+function out = problem3_solver(robotId, baseUrl)
+% 问题三：覆盖排查 + 就近清除 + 自适应交会（仅适用于全向源）。
+% 官方模拟器就绪后：out = problem3_solver('你们的参赛队号');
+% 本地仿真由 problem3_monte_carlo 调用同一策略，策略不读取场景真值。
+% 复用问题一 diameter_many，问题二 wedge_planes/clip_halfplane/welzl_mec。
+% 新增代码仅本文件与仿真文件；原问题一、二目录须保持在本文件旁边。
+if nargin < 1, error('请传入参赛队号；本地测试请运行 problem3_monte_carlo。'); end
+if nargin < 2, baseUrl = 'http://127.0.0.1:2026'; end
+root = fileparts(mfilename('fullpath'));
+addpath(fullfile(root,'问题1_交会定位'));
+addpath(genpath(fullfile(root,'问题2_第二检测点选择')));
+cfg = config_problem2();
+local = isa(robotId,'function_handle');
+if local, transport = robotId; robotId = 'local'; end
+opt = weboptions('MediaType','application/json','Timeout',5);
+pos = [0;0]; channel = 1; vt = 0; serial = 0; limit = inf; clock0 = tic;
+known = false(1,20); done = known; regions = cell(1,20);
+centers = nan(2,20); radii = inf(1,20); discovered = nan(1,20);
+cleared = nan(1,20); history = cell(0,3);
+
+% 75 m 方格的外接半径为 75/sqrt(2)。保留所有可能与目标圆相交的格子。
+% 只有整个格子处于某次全频道扫描的 1000 m 接收圆内，才从待查表删除。
+% 因而这里的网格给出连续区域覆盖证书，不是只检查离散点。
+h = 75; margin = h/sqrt(2);
+[gx,gy] = meshgrid(-1800:h:1800);
+unseen = [gx(:)';gy(:)'];
+unseen = unseen(:,vecnorm(unseen)<=1800+margin);
+coverR = 1000-margin-1e-6;
+% 原点加半径1500m上的正六边形顶点可覆盖这些带余量的格子。
+% 外层格心 r<=1853.04，距最近环站夹角<=30°，最坏距离<934<coverR。
+% 固定候选点避免把补查站选到边界外侧；已被顺路扫描覆盖的站会跳过。
+anchors = 1500*[cos((0:5)*pi/3);sin((0:5)*pi/3)];
+a = (0:63)*2*pi/64;
+domain = 1800/cos(pi/64)*[cos(a);sin(a)]; % 目标圆的外接多边形
+reply = act('/enter'); limit = reply.remaining_real_duration_s;
+reason = 'coverage_complete';
+while true
+    if toc(clock0)>limit-10, reason = 'real_time_limit'; break; end
+    if sum(done)==16, reason = 'all_16_cleared'; break; end
+    newlyCovered = vecnorm(unseen-pos)<=coverR;
+    pending = find(known & ~done);
+    % 新覆盖格子总面积至少 0.8 平方公里，或无可追踪目标时停下扫描。
+    % 扫描中顺便更新已知源的交会区域，共享一次移动带来的观测机会。
+    if any(newlyCovered) && (sum(newlyCovered)*h^2>=8e5 || isempty(pending))
+        order = [channel,setdiff(1:20,channel,'stable')];
+        for k = order
+            if ~done(k) && (~known(k)||radii(k)>60), observe(pos,k); end
+        end
+        unseen(:,newlyCovered) = [];
+        pending = find(known & ~done);
+    end
+    if isempty(pending) && isempty(unseen), break; end
+    useful = any(hypot(unseen(1,:)'-anchors(1,:), ...
+                       unseen(2,:)'-anchors(2,:))<=coverR,1);
+    % 把已知目标和必要补查站排在同一条开放路径中，避免最后折返补查。
+    % 最近邻给初始路线，2-opt 只做路段反转；每完成一项再更新这条路线。
+    tasks = [centers(:,pending),anchors(:,useful)];
+    tour = zeros(1,size(tasks,2)); left = 1:size(tasks,2); q = pos;
+    for i = 1:numel(tour)
+        [~,j] = min(vecnorm(tasks(:,left)-q));
+        tour(i)=left(j); q=tasks(:,left(j)); left(j)=[];
+    end
+    improved = true;
+    while improved
+        improved = false;
+        for i = 1:numel(tour)-1
+            for j = i+1:numel(tour)
+                route=[pos,tasks(:,tour)];
+                old=norm(route(:,i)-route(:,i+1));
+                new=norm(route(:,i)-route(:,j+1));
+                if j<numel(tour)
+                    old=old+norm(route(:,j+1)-route(:,j+2));
+                    new=new+norm(route(:,i+1)-route(:,j+2));
+                end
+                if new<old-1e-6, tour(i:j)=fliplr(tour(i:j)); improved=true; end
+            end
+        end
+    end
+    j=tour(1);
+    if j>numel(pending)
+        q=tasks(:,j); order=[channel,setdiff(1:20,channel,'stable')];
+        for k=order
+            if ~done(k) && (~known(k)||radii(k)>60), observe(q,k); end
+        end
+        unseen(:,vecnorm(unseen-q)<=coverR)=[];
+        continue;
+    end
+    k = pending(j);
+    for step = 1:12
+        if done(k), break; end
+        c = centers(:,k); r = radii(k);
+        if r<=60
+            % 小区域先尝试光学清除；失败也确实计入 3 s，不伪装成成功。
+            if clearAt(c,k), break; end
+            observe(pos,k);
+        else
+            % 向区域中心靠近，并侧移最多 80 m 增加交会角。
+            u = c-pos; if norm(u)<1e-9, u = [1;0]; end
+            u = u/norm(u); q = c+min(80,r/2)*[-u(2);u(1)];
+            observe(q,k);
+        end
+    end
+    if ~done(k)
+        % 极端几何退化兜底：25 m 方格的最远覆盖距离为 17.68 m < 20 m。
+        % 扫描定位多边形的整个包围矩形；不用随机重测同一点来减小误差。
+        V = regions{k}; lo = min(V,[],2); hi = max(V,[],2);
+        for y = lo(2):25:hi(2)+25
+            xs = lo(1):25:hi(1)+25;
+            if abs(xs(end)-pos(1))<abs(xs(1)-pos(1)), xs = fliplr(xs); end
+            for x = xs
+                if clearAt([x;y],k), break; end
+            end
+            if done(k), break; end
+        end
+        assert(done(k),'光学覆盖兜底失败：请检查测向误差或接口数据。');
+    end
+end
+act('/exit');
+out = struct('cleared',sum(done),'totalTime',vt,'averageTime',vt/max(1,sum(done)), ...
+    'complete',all(~known|done) && (isempty(unseen)||sum(done)==16), ...
+    'reason',reason,'runtime',toc(clock0),'discoveryTime',discovered, ...
+    'clearTime',cleared,'history',{history},'remainingCells',size(unseen,2));
+if ~local
+    stamp=char(datetime('now','Format','yyyyMMdd_HHmmss'));
+    save(fullfile(root,['problem3_run_' stamp '.mat']),'out');
+    fprintf('清除 %d 个，总时间 %.2f s，平均 %.2f s，完整排查=%d\n', ...
+        out.cleared,out.totalTime,out.averageTime,out.complete);
+end
+
+    function observe(q,k)
+        % 只从接口响应取得信息；无信号不推断距离为 1500 m 以外。
+        z = act('/measure',q,k);
+        if strcmp(z.measure_result,'no_signal'), return; end
+        if ~known(k), known(k)=true; discovered(k)=vt; regions{k}=domain; end
+        if strcmp(z.measure_result,'near')
+            assert(clearAt(q,k),'near 后光学清除失败。'); return;
+        end
+        % 接口示向度保留两位小数：将 ±1° 加宽到 ±1.005°容纳舍入。
+        th = deg2rad(z.svd_deg);
+        [n1,b1,n2,b2] = wedge_planes(q,th,deg2rad(1.005));
+        V = clip_halfplane(regions{k},n1,b1+1e-7);
+        V = clip_halfplane(V,n2,b2+1e-7);
+        u = [cos(th);sin(th)];
+        V = clip_halfplane(V,u,u'*q+1500+1e-7);
+        assert(~isempty(V),'交会区域为空：观测与模型不相容。');
+        regions{k} = V;
+        D = diameter_many({V'}); % 直接使用问题一的直径算法
+        if D<=20
+            c = V(:,1); r = D;   % 任一顶点到区域内所有点均不超过 D
+        else
+            [c,r] = welzl_mec(V,cfg); % 直接使用问题二的包围圆工具
+        end
+        centers(:,k)=c; radii(k)=max(r,max(vecnorm(V-c)));
+    end
+
+    function success = clearAt(q,k)
+        z = act('/clear',q,k);
+        success = strcmp(z.clear_result,'success');
+        if success, done(k)=true; cleared(k)=vt; end
+    end
+
+    function z = act(path,q,k)
+        % 一个动作一个 ID；通信失败重试同一请求，避免重复计时或移动。
+        if ~strcmp(path,'/exit') && toc(clock0)>limit-5
+            error('现实时间不足，停止发送新动作。');
+        end
+        serial = serial+1;
+        request = struct('arena_id','default','robot_id',robotId, ...
+            'request_id',sprintf('p3-%d',serial));
+        if nargin>1
+            request.position = struct('x',q(1),'y',q(2)); request.channel=k;
+        end
+        for attempt = 1:3
+            try
+                if local, z=transport(path,request);
+                else, z=webwrite([baseUrl path],request,opt); end
+                break;
+            catch err
+                if attempt==3, rethrow(err); end
+            end
+        end
+        assert(z.accepted,'模拟器拒绝请求：%s',jsonencode(z));
+        vt = z.virtual_time_s;
+        if nargin>1, pos=q; end
+        if strcmp(path,'/measure'), channel=k; end % clear 不切换测向频道
+        history(end+1,:) = {path,request,z};
+    end
+end
+
+\end{lstlisting}
+
+% problem3_solver_optimized.m
+\begin{lstlisting}[language=matlab]
+function out = problem3_solver_optimized(robotId, baseUrl)
+% 问题三优化版：短半径覆盖骨架 + 动态开放路径。
+% 官方模拟器就绪后：out = problem3_solver_optimized('你们的参赛队号');
+% 本地公平对比请运行 problem3_compare_monte_carlo。
+% 基础款 problem3_solver.m 保持不变；本文件继续复用问题一、二的几何工具。
+if nargin < 1, error('请传入参赛队号；本地测试请运行 problem3_compare_monte_carlo。'); end
+if nargin < 2, baseUrl = 'http://127.0.0.1:2026'; end
+root = fileparts(mfilename('fullpath'));
+addpath(fullfile(root,'问题1_交会定位'));
+addpath(genpath(fullfile(root,'问题2_第二检测点选择')));
+cfg = config_problem2();
+local = isa(robotId,'function_handle');
+if local, transport = robotId; robotId = 'local'; end
+opt = weboptions('MediaType','application/json','Timeout',5);
+pos = [0;0]; channel = 1; vt = 0; serial = 0; limit = inf; clock0 = tic;
+known = false(1,20); done = known; regions = cell(1,20);
+centers = nan(2,20); radii = inf(1,20); discovered = nan(1,20);
+cleared = nan(1,20); history = cell(0,3);
+
+% 用20 m方格给连续圆域建立覆盖证书。格子外接半径为20/sqrt(2) m：
+% 若格心距扫描点不超过1000-margin，则整个格子都在保守接收圆内。
+h = 20; margin = h/sqrt(2);
+[gx,gy] = meshgrid(-1800:h:1800);
+unseen = [gx(:)';gy(:)'];
+unseen = unseen(:,vecnorm(unseen)<=1800+margin);
+coverR = 1000-margin-1e-6;
+
+% 原点和正六边形构成必达搜索骨架。首轮在原点发现的目标越少，说明
+% 目标越可能偏外，环站就越靠外；半径限制在[1200,1500] m。
+% 对最小半径1200 m，外层最坏格心到最近环站的距离上界为980.05 m，
+% 小于coverR=985.86 m；更大的环站半径也通过相同不等式验证。
+% 因而自适应选择仍保证发现接收半径至少1000 m的任意全向源。
+anchors = zeros(2,0); anchorRadius = nan;
+a = (0:63)*2*pi/64;
+domain = 1800/cos(pi/64)*[cos(a);sin(a)]; % 目标圆的外接多边形
+reply = act('/enter'); limit = reply.remaining_real_duration_s;
+reason = 'coverage_complete';
+while true
+    if toc(clock0)>limit-10, reason = 'real_time_limit'; break; end
+    if sum(done)==16, reason = 'all_16_cleared'; break; end
+    newlyCovered = vecnorm(unseen-pos)<=coverR;
+    pending = find(known & ~done);
+    % 顺路覆盖新增面积较大时扫描；没有已知目标时立即扫描以继续发现目标。
+    if any(newlyCovered) && (sum(newlyCovered)*h^2>=8e5 || isempty(pending))
+        order = [channel,setdiff(1:20,channel,'stable')];
+        for k = order
+            if ~done(k) && (~known(k)||radii(k)>60), observe(pos,k); end
+        end
+        unseen(:,newlyCovered) = [];
+        pending = find(known & ~done);
+    end
+    if isempty(anchors)
+        anchorRadius=max(1200,1500-60*sum(known));
+        anchors=anchorRadius*[cos((0:5)*pi/3);sin((0:5)*pi/3)];
+    end
+    if isempty(pending) && isempty(unseen), break; end
+    useful = any(hypot(unseen(1,:)'-anchors(1,:), ...
+                       unseen(2,:)'-anchors(2,:))<=coverR,1);
+
+    % 把待清除目标与尚有覆盖贡献的骨架站放入同一条开放路径。
+    tasks = [centers(:,pending),anchors(:,useful)];
+    tour = zeros(1,size(tasks,2)); left = 1:size(tasks,2); q = pos;
+    for i = 1:numel(tour)
+        [~,j] = min(vecnorm(tasks(:,left)-q));
+        tour(i)=left(j); q=tasks(:,left(j)); left(j)=[];
+    end
+    improved = true;
+    while improved
+        improved = false;
+        for i = 1:numel(tour)-1
+            for j = i+1:numel(tour)
+                route=[pos,tasks(:,tour)];
+                old=norm(route(:,i)-route(:,i+1));
+                new=norm(route(:,i)-route(:,j+1));
+                if j<numel(tour)
+                    old=old+norm(route(:,j+1)-route(:,j+2));
+                    new=new+norm(route(:,i+1)-route(:,j+2));
+                end
+                if new<old-1e-6, tour(i:j)=fliplr(tour(i:j)); improved=true; end
+            end
+        end
+    end
+    j=tour(1);
+    if j>numel(pending)
+        q=tasks(:,j); order=[channel,setdiff(1:20,channel,'stable')];
+        for k=order
+            if ~done(k) && (~known(k)||radii(k)>60), observe(q,k); end
+        end
+        unseen(:,vecnorm(unseen-q)<=coverR)=[];
+        continue;
+    end
+
+    k = pending(j);
+    for step = 1:12
+        if done(k), break; end
+        c = centers(:,k); r = radii(k);
+        if r<=60
+            if clearAt(c,k), break; end
+            observe(pos,k);
+        else
+            % 沿用基础款的局部定位动作，只检验搜索骨架收缩的净收益。
+            u=c-pos; if norm(u)<1e-9, u=[1;0]; end
+            u=u/norm(u); observe(c+min(80,r/2)*[-u(2);u(1)],k);
+        end
+    end
+    if ~done(k)
+        % 数值退化兜底：25 m光学方格最远覆盖距离17.68 m，小于20 m。
+        V=regions{k}; lo=min(V,[],2); hi=max(V,[],2);
+        for y=lo(2):25:hi(2)+25
+            xs=lo(1):25:hi(1)+25;
+            if abs(xs(end)-pos(1))<abs(xs(1)-pos(1)), xs=fliplr(xs); end
+            for x=xs
+                if clearAt([x;y],k), break; end
+            end
+            if done(k), break; end
+        end
+        assert(done(k),'光学覆盖兜底失败：请检查测向误差或接口数据。');
+    end
+end
+act('/exit');
+out = struct('cleared',sum(done),'totalTime',vt,'averageTime',vt/max(1,sum(done)), ...
+    'complete',all(~known|done) && (isempty(unseen)||sum(done)==16), ...
+    'reason',reason,'runtime',toc(clock0),'discoveryTime',discovered, ...
+    'clearTime',cleared,'history',{history},'remainingCells',size(unseen,2), ...
+    'anchorRadius',anchorRadius);
+if ~local
+    stamp=char(datetime('now','Format','yyyyMMdd_HHmmss'));
+    save(fullfile(root,['problem3_optimized_run_' stamp '.mat']),'out');
+    fprintf('优化版：清除%d个，总时间%.2f s，平均%.2f s，完整排查=%d\n', ...
+        out.cleared,out.totalTime,out.averageTime,out.complete);
+end
+
+    function observe(q,k)
+        z=act('/measure',q,k);
+        if strcmp(z.measure_result,'no_signal'), return; end
+        if ~known(k), known(k)=true; discovered(k)=vt; regions{k}=domain; end
+        if strcmp(z.measure_result,'near')
+            assert(clearAt(q,k),'near 后光学清除失败。'); return;
+        end
+        th=deg2rad(z.svd_deg);
+        [n1,b1,n2,b2]=wedge_planes(q,th,deg2rad(1.005));
+        V=clip_halfplane(regions{k},n1,b1+1e-7);
+        V=clip_halfplane(V,n2,b2+1e-7);
+        u=[cos(th);sin(th)];
+        V=clip_halfplane(V,u,u'*q+1500+1e-7);
+        assert(~isempty(V),'交会区域为空：观测与模型不相容。');
+        regions{k}=V; D=diameter_many({V'});
+        if D<=20, c=V(:,1); r=D;
+        else, [c,r]=welzl_mec(V,cfg); end
+        centers(:,k)=c; radii(k)=max(r,max(vecnorm(V-c)));
+    end
+
+    function success=clearAt(q,k)
+        z=act('/clear',q,k); success=strcmp(z.clear_result,'success');
+        if success, done(k)=true; cleared(k)=vt; end
+    end
+
+    function z=act(path,q,k)
+        if ~strcmp(path,'/exit') && toc(clock0)>limit-5
+            error('现实时间不足，停止发送新动作。');
+        end
+        serial=serial+1;
+        request=struct('arena_id','default','robot_id',robotId, ...
+            'request_id',sprintf('p3opt-%d',serial));
+        if nargin>1
+            request.position=struct('x',q(1),'y',q(2)); request.channel=k;
+        end
+        for attempt=1:3
+            try
+                if local, z=transport(path,request);
+                else, z=webwrite([baseUrl path],request,opt); end
+                break;
+            catch err
+                if attempt==3, rethrow(err); end
+            end
+        end
+        assert(z.accepted,'模拟器拒绝请求：%s',jsonencode(z));
+        vt=z.virtual_time_s;
+        if nargin>1, pos=q; end
+        if strcmp(path,'/measure'), channel=k; end
+        history(end+1,:)={path,request,z};
+    end
+end
+
+\end{lstlisting}
+
+\subsection{问题四相关代码}
+
+% problem4_compare_split_monte_carlo.m
+\begin{lstlisting}[language=matlab]
+function [comparison,summary] = problem4_compare_split_monte_carlo(trials,seed,scenario)
+% 同一批问题四案例上配对比较基础款与“全向优先/定向分流”优化款。
+% [comparison,summary]=problem4_compare_split_monte_carlo(100,20260912,'uniform');
+% scenario：uniform / edge / all_directional / extreme。
+if nargin<1, trials=100; end
+if nargin<2, seed=20260912; end
+if nargin<3, scenario='uniform'; end
+validateattributes(trials,{'numeric'},{'scalar','integer','positive'});
+assert(ismember(scenario,{'uniform','edge','all_directional','extreme'}),'未知场景。');
+root=fileparts(mfilename('fullpath')); addpath(root);
+world=RandStream('mt19937ar','Seed',seed);
+oldRng=rng; cleanup=onCleanup(@() rng(oldRng));
+values=zeros(2*trials,21); algorithms=strings(2*trials,1); errors=strings(2*trials,1);
+solvers={@problem4_solver,@problem4_solver_split}; labels=["base" "split"];
+for trial=1:trials
+    n=randi(world,[10,16]); channels=randperm(world,20,n);
+    theta=2*pi*rand(world,1,n); rho=1800*sqrt(rand(world,1,n));
+    xy=[rho.*cos(theta);rho.*sin(theta)]; radius=1000+500*rand(world,1,n);
+    nDir=randi(world,[1,n-1]); directed=false(1,n);
+    directed(randperm(world,n,nDir))=true; emit=2*pi*rand(world,1,n);
+    if strcmp(scenario,'edge')
+        xy=1800*[cos(theta);sin(theta)]; radius(:)=1000; emit(directed)=theta(directed);
+    elseif strcmp(scenario,'all_directional')
+        directed(:)=true;
+    elseif strcmp(scenario,'extreme')
+        radius(:)=1000; rho=1800*rand(world,1,n).^(1/4);
+        xy=[rho.*cos(theta);rho.*sin(theta)]; emit(directed)=theta(directed);
+    end
+    for a=1:2
+        rng(seed+trial);
+        [m,err]=runCase(solvers{a},channels,xy,radius,directed,emit, ...
+            seed+104729*trial,scenario);
+        row=2*(trial-1)+a; values(row,:)=[trial,n,sum(directed),m];
+        algorithms(row)=labels(a); errors(row)=err;
+    end
+    b=values(2*trial-1,6); s=values(2*trial,6);
+    fprintf('%4d/%d | 定向%2d/%2d | 基础 %.1f | 分流 %.1f | 节省 %.1f s/源\n', ...
+        trial,trials,sum(directed),n,b,s,b-s);
+end
+names={'Trial','N','Directional','Cleared','Total_s','Average_s','Runtime_s', ...
+    'Complete','Move_s','Switch_s','Measure_s','OpticalLaser_s','StationsVisited', ...
+    'Fallbacks','RaySweeps','DirectionObservations','GlobalMove_s','LocalMove_s', ...
+    'DirectionalMode','CertifiedDirectional','P2Tests'};
+comparison=array2table(values,'VariableNames',names);
+comparison.Algorithm=algorithms; comparison.Error=errors;
+comparison=movevars(comparison,{'Algorithm','Error'},'After','Trial');
+b=comparison(comparison.Algorithm=="base",:); s=comparison(comparison.Algorithm=="split",:);
+summary=table(labels',[mean(b.Average_s);mean(s.Average_s)], ...
+    [sum(b.Total_s)/sum(b.Cleared);sum(s.Total_s)/sum(s.Cleared)], ...
+    [mean(b.Total_s);mean(s.Total_s)],[mean(b.Move_s);mean(s.Move_s)], ...
+    [mean(b.Measure_s+b.Switch_s);mean(s.Measure_s+s.Switch_s)], ...
+    [mean(b.GlobalMove_s);mean(s.GlobalMove_s)],[mean(b.LocalMove_s);mean(s.LocalMove_s)], ...
+    [mean(b.Complete);mean(s.Complete)],[mean(b.Average_s<300);mean(s.Average_s<300)], ...
+    'VariableNames',{'Algorithm','MeanAverage_s','PooledAverage_s','MeanTotal_s', ...
+    'MeanMove_s','MeanMeasureSwitch_s','MeanGlobalMove_s','MeanLocalMove_s', ...
+    'FullClearRate','Below300Rate'});
+delta=b.Average_s-s.Average_s;
+fprintf('\n%s：基础 %.2f，分流 %.2f s/源；平均节省 %.2f s/源（%.1f%%）。\n', ...
+    scenario,mean(b.Average_s),mean(s.Average_s),mean(delta),100*mean(delta)/mean(b.Average_s));
+fprintf('全清率：基础 %.1f%%，分流 %.1f%%；分流胜出 %.1f%% 的配对案例。\n', ...
+    100*mean(b.Complete),100*mean(s.Complete),100*mean(delta>0));
+folder=fullfile(root,'问题4优化结果'); if ~isfolder(folder), mkdir(folder); end
+prefix=fullfile(folder,['problem4_split_compare_' scenario]);
+writetable(comparison,[prefix '_runs.csv']); writetable(summary,[prefix '_summary.csv']);
+save([prefix '.mat'],'comparison','summary','seed','scenario');
+f=figure('Color','w','Visible','off','Position',[100 100 900 650]); tiledlayout(2,1);
+nexttile; plot(b.Average_s,'o-','DisplayName','基础款'); hold on;
+plot(s.Average_s,'o-','DisplayName','分流款'); yline(300,'r--','300 s');
+ylabel('Time per source (s)'); legend('Location','best'); title(['Problem 4: ' scenario]); grid on;
+nexttile; bar(delta); yline(0,'k-'); xlabel('Paired trial');
+ylabel('Base - split (s/source)'); grid on;
+set(findall(f,'Type','axes'),'Color','w','XColor','k','YColor','k','GridColor',[.3 .3 .3]);
+set(findall(f,'Type','text'),'Color','k'); exportgraphics(f,[prefix '.png'],'Resolution',150); close(f);
+end
+
+function [metrics,errText]=runCase(solver,channels,xy,radius,directed,emit,noiseSeed,scenario)
+% 真值仅保留在封闭模拟器中；两算法接收完全相同的接口反馈规则。
+n=numel(channels); live=true(1,n); p=[0;0]; ch=1; t=0; parts=zeros(1,4);
+errText=""; result=struct(); start=tic;
+try
+    result=solver(@simulator);
+catch err
+    errText=string(getReport(err,'extended','hyperlinks','off'));
+end
+count=sum(~live); average=t/max(1,count); if count==0, average=inf; end
+complete=~any(live)&&isfield(result,'complete')&&result.complete;
+v=nan(1,9);
+if isfield(result,'stationsVisited'), v(1)=result.stationsVisited; end
+if isfield(result,'fallbackCount'), v(2)=result.fallbackCount; end
+if isfield(result,'raySweepCount'), v(3)=result.raySweepCount; end
+if isfield(result,'observations'), v(4)=sum(result.observations); end
+if isfield(result,'globalDistance'), v(5)=result.globalDistance/5; end
+if isfield(result,'localDistance'), v(6)=result.localDistance/5; end
+if isfield(result,'directionalModeCount'), v(7)=result.directionalModeCount; end
+if isfield(result,'certifiedDirectionalCount'), v(8)=result.certifiedDirectionalCount; end
+if isfield(result,'p2Tests'), v(9)=result.p2Tests; end
+metrics=[count,t,average,toc(start),complete,parts,v];
+assert(abs(t-sum(parts))<1e-6,'模拟计时分项不守恒。');
+
+    function z=simulator(path,request)
+        z=struct('accepted',true,'virtual_time_s',t);
+        if strcmp(path,'/enter'), z.remaining_real_duration_s=1200; return; end
+        if strcmp(path,'/exit'), z.exit_reason='user_exit'; return; end
+        q=[request.position.x;request.position.y]; k=request.channel;
+        dt=norm(q-p)/5; parts(1)=parts(1)+dt; t=t+dt; p=q;
+        j=find(channels==k&live,1); d=inf; covered=false;
+        if ~isempty(j)
+            d=norm(xy(:,j)-p); e=[cos(emit(j));sin(emit(j))];
+            covered=~directed(j)||(p-xy(:,j))'*e>=-1e-9;
+        end
+        if strcmp(path,'/measure')
+            sw=double(ch~=k); ch=k; t=t+sw+5;
+            parts(2)=parts(2)+sw; parts(3)=parts(3)+5;
+            if isempty(j)||d>radius(j)||~covered
+                z.measure_result='no_signal';
+            elseif d<=5
+                z.measure_result='near';
+            else
+                w=sin(q(1)*12.9898+q(2)*78.233+k*37.719+noiseSeed*.013)*43758.5453;
+                err=2*(w-floor(w))-1;
+                if strcmp(scenario,'extreme'), err=sign(err); end
+                u=xy(:,j)-p; z.measure_result='direction';
+                z.svd_deg=mod(round(atan2d(u(2),u(1))+err,2),360);
+            end
+        else
+            ok=~isempty(j)&&d<=20; dt=3+2*ok; t=t+dt; parts(4)=parts(4)+dt;
+            if ok, live(j)=false; z.clear_result='success';
+            else, z.clear_result='no_target_in_range'; end
+        end
+        z.virtual_time_s=t;
+    end
+end
+
+\end{lstlisting}
+
+% problem4_monte_carlo.m
+\begin{lstlisting}[language=matlab]
+function [runs,sources] = problem4_monte_carlo(trials,seed,scenario)
+% 问题四蒙特卡洛：只通过模拟接口调用 problem4_solver，不向策略泄露真值。
+% [runs,sources] = problem4_monte_carlo(100,20260912,'uniform');
+% 场景：uniform（混合随机）、edge（边界外向压力）、
+%       all_directional（全定向压力）、extreme（最小半径和端点误差）。
+% 主要输出每局总时长、每源平均时长、首次发现及清除时刻。
+if nargin<1, trials=100; end
+if nargin<2, seed=20260912; end
+if nargin<3, scenario='uniform'; end
+validateattributes(trials,{'numeric'},{'scalar','integer','positive'});
+assert(ismember(scenario,{'uniform','edge','all_directional','extreme'}),'未知场景。');
+root=fileparts(mfilename('fullpath')); addpath(root);
+world=RandStream('mt19937ar','Seed',seed);
+oldRng=rng; cleanup=onCleanup(@() rng(oldRng)); rng(seed);
+records=zeros(trials,18); sourceRows=zeros(0,7); errors=strings(trials,1);
+for trial=1:trials
+    n=randi(world,[10,16]); channels=randperm(world,20,n);
+    theta=2*pi*rand(world,1,n); rho=1800*sqrt(rand(world,1,n));
+    xy=[rho.*cos(theta);rho.*sin(theta)]; radius=1000+500*rand(world,1,n);
+    nDir=randi(world,[1,n-1]); directed=false(1,n);
+    directed(randperm(world,n,nDir))=true; emit=2*pi*rand(world,1,n);
+    if strcmp(scenario,'edge')
+        xy=1800*[cos(theta);sin(theta)]; radius(:)=1000;
+        emit(directed)=theta(directed); % 定向波束朝圆外，专门检验最难边界
+    elseif strcmp(scenario,'all_directional')
+        directed(:)=true;
+    elseif strcmp(scenario,'extreme')
+        radius(:)=1000; rho=1800*rand(world,1,n).^(1/4);
+        xy=[rho.*cos(theta);rho.*sin(theta)];
+        emit(directed)=theta(directed);
+    end
+    isDir=false(1,20); isDir(channels)=directed;
+    live=true(1,n); p=[0;0]; ch=1; t=0; parts=zeros(1,4);
+    noise=containers.Map('KeyType','char','ValueType','double');
+    noiseRng=RandStream('mt19937ar','Seed',seed+trial); result=struct(); why="";
+    start=tic; complete=false; tail=nan;
+    try
+        result=problem4_solver(@simulator);
+        complete=result.complete&&~any(live);
+        ids=find(isfinite(result.clearTime));
+        [times,order]=sort(result.clearTime(ids)); ids=ids(order);
+        gaps=diff([0,times]); if ~isempty(times), tail=t-times(end); end
+        sourceRows=[sourceRows;[repmat(trial,numel(ids),1),ids', ...
+            isDir(ids)',result.discoveryTime(ids)',times',gaps', ...
+            (times-result.discoveryTime(ids))']]; %#ok<AGROW>
+    catch err
+        why=string(err.message); % 失败局保留在统计中，不静默删除
+    end
+    count=sum(~live); avg=t/max(1,count); if count==0, avg=inf; end
+    stationVisited=nan; fallback=nan; raySweep=nan; observations=nan;
+    globalMove=nan; localMove=nan;
+    if isfield(result,'stationsVisited'), stationVisited=result.stationsVisited; end
+    if isfield(result,'fallbackCount'), fallback=result.fallbackCount; end
+    if isfield(result,'raySweepCount'), raySweep=result.raySweepCount; end
+    if isfield(result,'observations'), observations=sum(result.observations); end
+    if isfield(result,'globalDistance'), globalMove=result.globalDistance/5; end
+    if isfield(result,'localDistance'), localMove=result.localDistance/5; end
+    records(trial,:)=[n,sum(directed),count,t,avg,toc(start),complete,parts,tail, ...
+        stationVisited,fallback,raySweep,observations,globalMove,localMove]; errors(trial)=why;
+    fprintf('%4d/%d | 定向%2d/%2d | 清除%2d | 总%7.1f s | 平均%6.1f s | 全清%d\n', ...
+        trial,trials,sum(directed),n,count,t,avg,complete);
+    assert(abs(t-sum(parts))<1e-6,'模拟计时分项不守恒。');
+end
+runs=array2table(records,'VariableNames',{'N','Directional','Cleared','Total_s', ...
+    'Average_s','Runtime_s','Complete','Move_s','Switch_s','Measure_s', ...
+    'OpticalLaser_s','FinalCheck_s','StationsVisited','Fallbacks','RaySweeps', ...
+    'DirectionObservations','GlobalMove_s','LocalMove_s'});
+runs.Error=errors;
+sources=array2table(sourceRows,'VariableNames',{'Trial','Channel','IsDirectional', ...
+    'Discovery_s','Clear_s','ClearInterval_s','DiscoveryToClear_s'});
+folder=fullfile(root,'问题4结果'); if ~isfolder(folder), mkdir(folder); end
+prefix=fullfile(folder,['problem4_mc_' scenario]);
+writetable(runs,[prefix '_runs.csv']); writetable(sources,[prefix '_sources.csv']);
+save([prefix '.mat'],'runs','sources','seed','scenario','result');
+fprintf('\n全清率 %.1f%%；逐局平均 %.2f s/源；汇总平均 %.2f s/源。\n', ...
+    100*mean(runs.Complete),mean(runs.Average_s),sum(runs.Total_s)/sum(runs.Cleared));
+fprintf('全清且平均<300 s：%.1f%%；最慢一局 %.2f s/源；平均兜底 %.2f 次。\n', ...
+    100*mean(runs.Complete & runs.Average_s<300),max(runs.Average_s),mean(runs.Fallbacks));
+fprintf('平均耗时分解：全局移动 %.1f，局部移动 %.1f，测量及切换 %.1f，光学清除 %.1f s。\n', ...
+    mean(runs.GlobalMove_s),mean(runs.LocalMove_s), ...
+    mean(runs.Measure_s+runs.Switch_s),mean(runs.OpticalLaser_s));
+f=figure('Color','w','Visible','off','Position',[100 100 850 620]);
+tiledlayout(2,1);
+nexttile; plot(runs.Total_s,'o-'); ylabel('Total time (s)'); grid on;
+title(sprintf('Problem 4 Monte Carlo: %s',scenario));
+nexttile; plot(runs.Average_s,'o-'); yline(300,'r--','300 s');
+xlabel('Trial'); ylabel('Time per source (s)'); grid on;
+set(findall(f,'Type','axes'),'Color','w','XColor','k','YColor','k','GridColor',[.3 .3 .3]);
+set(findall(f,'Type','text'),'Color','k');
+exportgraphics(f,[prefix '.png'],'Resolution',150); close(f);
+
+    function z=simulator(path,request)
+        % 真值封闭在接口中；定向源仅在接收半径内且检测点位于发射半平面时可见。
+        z=struct('accepted',true,'virtual_time_s',t);
+        if strcmp(path,'/enter'), z.remaining_real_duration_s=1200; return; end
+        if strcmp(path,'/exit'), z.exit_reason='user_exit'; return; end
+        q=[request.position.x;request.position.y]; k=request.channel;
+        dt=norm(q-p)/5; parts(1)=parts(1)+dt; t=t+dt; p=q;
+        j=find(channels==k&live,1); d=inf; covered=false;
+        if ~isempty(j)
+            d=norm(xy(:,j)-p); e=[cos(emit(j));sin(emit(j))];
+            covered=~directed(j)||(p-xy(:,j))'*e>=-1e-9;
+        end
+        if strcmp(path,'/measure')
+            sw=double(ch~=k); ch=k; t=t+sw+5;
+            parts(2)=parts(2)+sw; parts(3)=parts(3)+5;
+            if isempty(j)||d>radius(j)||~covered
+                z.measure_result='no_signal';
+            elseif d<=5
+                z.measure_result='near';
+            else
+                key=sprintf('%d:%.17g:%.17g',k,p(1),p(2));
+                if ~isKey(noise,key)
+                    e=2*rand(noiseRng)-1;
+                    if strcmp(scenario,'extreme'), e=sign(e); end
+                    noise(key)=e;
+                end
+                v=xy(:,j)-p; z.measure_result='direction';
+                z.svd_deg=mod(round(atan2d(v(2),v(1))+noise(key),2),360);
+            end
+        else
+            ok=~isempty(j)&&d<=20; dt=3+2*ok; t=t+dt; parts(4)=parts(4)+dt;
+            if ok, live(j)=false; z.clear_result='success';
+            else, z.clear_result='no_target_in_range'; end
+        end
+        z.virtual_time_s=t;
+    end
+end
+
+\end{lstlisting}
+
+% problem4_solver.m
+\begin{lstlisting}[language=matlab]
+function out = problem4_solver(robotId, baseUrl)
+% 问题四基础款：双环稳健搜索 + 成对侧向交会，兼容全向和180度定向源。
+% 官方模拟器：out = problem4_solver('你们的参赛队号');
+% 本地检验：problem4_monte_carlo(100,20260912,'uniform');
+% 直接复用问题一的 diameter_many 和问题二的半平面、最小包围圆算法。
+if nargin<1, error('请传入参赛队号；本地测试请运行 problem4_monte_carlo。'); end
+if nargin<2, baseUrl='http://127.0.0.1:2026'; end
+root=fileparts(mfilename('fullpath'));
+addpath(fullfile(root,'问题1_交会定位'));
+addpath(genpath(fullfile(root,'问题2_第二检测点选择')));
+cfg=config_problem2();
+local=isa(robotId,'function_handle');
+if local, transport=robotId; robotId='local'; end
+opt=weboptions('MediaType','application/json','Timeout',5);
+pos=[0;0]; channel=1; vt=0; serial=0; limit=inf; clock0=tic;
+inLocal=false; globalDistance=0; localDistance=0;
+known=false(1,20); done=known; regions=cell(1,20);
+centers=nan(2,20); radii=inf(1,20); obsCount=zeros(1,20);
+lastPos=nan(2,20); lastTheta=nan(1,20);
+firstPos=nan(2,20); firstTheta=nan(1,20);
+discovered=nan(1,20); cleared=nan(1,20); history=cell(0,3);
+fallbackCount=0; raySweepCount=0;
+
+% 搜索覆盖证书：外环正十二边形内切圆半径
+% 1865*cos(15度)=1801.46>1800；内外环错开15度。
+% 原点、内环和外环的三角剖分最大边长约979 m，小于最小接收半径1000 m。
+% 任意源位于某个小三角形内；任意过该源的180度半平面至少含一个顶点，
+% 所以不论定向源朝向如何，至少有一个距离不超过1000 m的搜索站能收到信号。
+a=(0:11)*pi/6;
+stations=[[0;0],950*[cos(a);sin(a)],1865*[cos(a+pi/12);sin(a+pi/12)]];
+visited=false(1,size(stations,2));
+ang=(0:71)*2*pi/72;
+domain=1800/cos(pi/72)*[cos(ang);sin(ang)]; % 圆域的保守外接多边形
+
+reply=act('/enter'); limit=reply.remaining_real_duration_s;
+reason='search_complete';
+while true
+    if toc(clock0)>limit-10, reason='real_time_limit'; break; end
+    if sum(done)==16, reason='all_16_cleared'; break; end
+    left=find(~visited);
+    pending=find(known & ~done);
+    if isempty(left)&&isempty(pending), break; end
+
+    % 把待清除源与剩余搜索站放入同一条开放路线；目标只有在顺路成为
+    % 下一节点时才追踪，后续搜索站也可在此前免费补充新的方位线。
+    tasks=[centers(:,pending),stations(:,left)];
+    tour=zeros(1,size(tasks,2)); pool=1:size(tasks,2); q=pos;
+    for routeStep=1:numel(tour)
+        [~,pick]=min(vecnorm(tasks(:,pool)-q));
+        tour(routeStep)=pool(pick); q=tasks(:,pool(pick)); pool(pick)=[];
+    end
+    improved=true;
+    while improved
+        improved=false; route=[pos,tasks(:,tour)];
+        for swapStart=1:numel(tour)-1
+            for swapEnd=swapStart+1:numel(tour)
+                old=norm(route(:,swapStart)-route(:,swapStart+1));
+                new=norm(route(:,swapStart)-route(:,swapEnd+1));
+                if swapEnd<numel(tour)
+                    old=old+norm(route(:,swapEnd+1)-route(:,swapEnd+2));
+                    new=new+norm(route(:,swapStart+1)-route(:,swapEnd+2));
+                end
+                if new<old-1e-7
+                    tour(swapStart:swapEnd)=fliplr(tour(swapStart:swapEnd)); improved=true;
+                    route=[pos,tasks(:,tour)];
+                end
+            end
+        end
+    end
+    next=tour(1);
+    if next<=numel(pending)
+        k=pending(next); inLocal=true; localize(k); inLocal=false;
+        continue;
+    end
+    stationId=left(next-numel(pending));
+    q=stations(:,stationId); visited(stationId)=true;
+
+    % 未发现频道继续全查；已发现频道最多利用搜索站补到六条方位线，
+    % 此后等待路线中的追踪节点，避免重复测量同一频道。
+    list=find(~done & (~known | obsCount<6));
+    order=[channel,setdiff(list,channel,'stable')];
+    if ~ismember(channel,list), order=list; end
+    for k=order
+        observe(q,k);
+        if sum(done)==16, break; end
+    end
+
+end
+if toc(clock0)<=limit-5, act('/exit'); end
+out=struct('cleared',sum(done),'totalTime',vt,'averageTime',vt/max(1,sum(done)), ...
+    'complete',(all(visited)||sum(done)==16) && all(~known|done), ...
+    'reason',reason,'runtime',toc(clock0),'discoveryTime',discovered, ...
+    'clearTime',cleared,'observations',obsCount,'finalRadius',radii,'history',{history}, ...
+    'stationsVisited',sum(visited),'stationCount',size(stations,2), ...
+    'fallbackCount',fallbackCount,'raySweepCount',raySweepCount, ...
+    'globalDistance',globalDistance,'localDistance',localDistance);
+if ~local
+    stamp=char(datetime('now','Format','yyyyMMdd_HHmmss'));
+    save(fullfile(root,['problem4_run_' stamp '.mat']),'out');
+    fprintf('问题四基础款：清除%d个，总时间%.2f s，平均%.2f s，完整排查=%d\n', ...
+        out.cleared,out.totalTime,out.averageTime,out.complete);
+end
+
+    function localize(k)
+        % 沿最近测向线向前推进。两探测点关于测向线对称，侧移量超过
+        % 490*tan(1.005度)，所以真实射线穿过两点之间的线段；只要源仍在
+        % 前方，180度发射半平面至少包含其中一点，且两点均在接收半径内。
+        for round=1:5
+            if done(k), return; end
+            if radii(k)<=20 && clearAt(centers(:,k),k), return; end
+            q0=lastPos(:,k); th=lastTheta(k);
+            if any(~isfinite(q0))||~isfinite(th), break; end
+            U=min(1500,max(vecnorm(regions{k}-q0)));
+            if U<=600, raySweep(k,q0,th,U); return; end
+            u=[cos(th);sin(th)]; v=[-u(2);u(1)];
+            advance=min(490,0.6*U); side=advance*tan(deg2rad(1.005))+3;
+            probes=[q0+advance*u+side*v,q0+advance*u-side*v];
+            if norm(probes(:,2)-pos)<norm(probes(:,1)-pos), probes=fliplr(probes); end
+            hit=observe(probes(:,1),k);
+            if ~done(k)&&~hit, hit=observe(probes(:,2),k); end
+            if done(k), return; end
+            if ~hit
+                % 成对无信号时，源必在推进截面之前；无信号在这里作为
+                % “一对互补实验”的联合结论使用，而非单点排除。
+                raySweep(k,q0,th,advance/cos(deg2rad(1.005))+1); return;
+            end
+            if clearAt(lastPos(:,k),k), return; end
+        end
+        if done(k), return; end
+
+        % 兜底只使用第一次有效测向：真源在长1500 m、半宽26.32 m的窄带内。
+        % 28 m方格的覆盖半径为19.80 m，小于20 m清除半径，因此必能清除。
+        fallbackCount=fallbackCount+1; u=[cos(firstTheta(k));sin(firstTheta(k))];
+        v=[-u(2);u(1)]; xs=0:28:1512; ys=[-42,-14,14,42];
+        % 四种蛇形起点中选离当前位置最近者，避免无意义折返。
+        paths=cell(1,4); d0=inf(1,4); c=0;
+        for flipY=0:1
+            yy=ys; if flipY, yy=fliplr(yy); end
+            for flipX=0:1
+                c=c+1; P=zeros(2,numel(xs)*numel(yy)); t=0;
+                for r=1:numel(yy)
+                    xx=xs; if mod(r+flipX,2)==0, xx=fliplr(xx); end
+                    Q=firstPos(:,k)+u*xx+v*(yy(r)*ones(size(xx)));
+                    P(:,t+(1:numel(xx)))=Q; t=t+numel(xx);
+                end
+                paths{c}=P; d0(c)=norm(P(:,1)-pos);
+            end
+        end
+        [~,c]=min(d0); P=paths{c};
+        for fallbackPoint=1:size(P,2)
+            if clearAt(P(:,fallbackPoint),k), return; end
+        end
+        error('光学窄带兜底失败：请检查测向误差或模拟器规则。');
+    end
+
+    function raySweep(k,q0,th,U)
+        % 已知源在长度U的单次测向误差带内。当U<=600 m时横向误差小于
+        % 10.53 m；按清除圆余下的弦长设置纵向间距，可用一条直线完全覆盖。
+        raySweepCount=raySweepCount+1; epsA=deg2rad(1.005);
+        halfWidth=U*sin(epsA); assert(halfWidth<20,'测向带过宽，不能单线覆盖。');
+        step=1.98*sqrt(20^2-halfWidth^2);
+        xs=step/2:step:U+step/2;
+        u=[cos(th);sin(th)]; P=q0+u*xs;
+        if norm(P(:,end)-pos)<norm(P(:,1)-pos), P=fliplr(P); end
+        for sweepPoint=1:size(P,2)
+            if clearAt(P(:,sweepPoint),k), return; end
+        end
+        error('测向带直线覆盖失败：请检查误差上界或距离上界。');
+    end
+
+    function hit=observe(q,k)
+        % no_signal 可能由距离、朝向或空频道造成，故不据此裁剪位置区域。
+        z=act('/measure',q,k); hit=~strcmp(z.measure_result,'no_signal');
+        if ~hit, return; end
+        if ~known(k)
+            known(k)=true; discovered(k)=vt; regions{k}=domain;
+        end
+        if strcmp(z.measure_result,'near')
+            assert(clearAt(q,k),'near 后光学清除失败。'); return;
+        end
+        th=deg2rad(z.svd_deg); obsCount(k)=obsCount(k)+1;
+        lastPos(:,k)=q; lastTheta(k)=th;
+        if obsCount(k)==1, firstPos(:,k)=q; firstTheta(k)=th; end
+        [n1,b1,n2,b2]=wedge_planes(q,th,deg2rad(1.005));
+        V=clip_halfplane(regions{k},n1,b1+1e-7);
+        V=clip_halfplane(V,n2,b2+1e-7);
+        u=[cos(th);sin(th)]; V=clip_halfplane(V,u,u'*q+1500+1e-7);
+        assert(~isempty(V),'交会区域为空：观测与误差模型不相容。');
+        regions{k}=V; D=diameter_many({V'});
+        if D<=20, c=V(:,1); r=D;
+        else, [c,r]=welzl_mec(V,cfg); end
+        centers(:,k)=c; radii(k)=max(r,max(vecnorm(V-c)));
+    end
+
+    function success=clearAt(q,k)
+        z=act('/clear',q,k); success=strcmp(z.clear_result,'success');
+        if success, done(k)=true; cleared(k)=vt; end
+    end
+
+    function z=act(path,q,k)
+        % 新动作使用新ID；网络故障只重试完全相同的请求和ID。
+        if ~strcmp(path,'/exit')&&toc(clock0)>limit-5
+            error('现实时间不足，停止发送新动作。');
+        end
+        serial=serial+1;
+        request=struct('arena_id','default','robot_id',robotId, ...
+            'request_id',sprintf('p4-%d',serial));
+        if nargin>1
+            request.position=struct('x',q(1),'y',q(2)); request.channel=k;
+        end
+        for attempt=1:3
+            try
+                if local, z=transport(path,request);
+                else, z=webwrite([baseUrl path],request,opt); end
+                break;
+            catch err
+                if attempt==3, rethrow(err); end
+            end
+        end
+        assert(z.accepted,'模拟器拒绝请求：%s',jsonencode(z)); vt=z.virtual_time_s;
+        if nargin>1
+            if inLocal, localDistance=localDistance+norm(q-pos);
+            else, globalDistance=globalDistance+norm(q-pos); end
+            pos=q;
+        end
+        if strcmp(path,'/measure'), channel=k; end
+        history(end+1,:)={path,request,z};
+    end
+end
+
+\end{lstlisting}
+
+% problem4_solver_split.m
+\begin{lstlisting}[language=matlab]
+function out = problem4_solver_split(robotId, baseUrl)
+% 问题四分流优化版：信号稳定时沿用问题三全向定位，失联后转定向追踪。
+% 官方模拟器：out = problem4_solver_split('你们的参赛队号');
+% 配对检验：problem4_compare_split_monte_carlo(100,20260912,'uniform');
+% 与基础款保持同一主结构；标有“分流改动”的部分是本版新增逻辑。
+if nargin<1, error('请传入参赛队号；本地测试请运行配对蒙特卡洛程序。'); end
+if nargin<2, baseUrl='http://127.0.0.1:2026'; end
+root=fileparts(mfilename('fullpath'));
+addpath(fullfile(root,'问题1_交会定位'));
+addpath(genpath(fullfile(root,'问题2_第二检测点选择')));
+cfg=config_problem2();
+local=isa(robotId,'function_handle');
+if local, transport=robotId; robotId='local'; end
+opt=weboptions('MediaType','application/json','Timeout',5);
+pos=[0;0]; channel=1; vt=0; serial=0; limit=inf; clock0=tic;
+inLocal=false; globalDistance=0; localDistance=0;
+known=false(1,20); done=known; regions=cell(1,20);
+centers=nan(2,20); radii=inf(1,20); obsCount=zeros(1,20);
+lastPos=nan(2,20); lastTheta=nan(1,20);
+firstPos=nan(2,20); firstTheta=nan(1,20);
+discovered=nan(1,20); cleared=nan(1,20); history=cell(0,3);
+fallbackCount=0; raySweepCount=0;
+
+% 分流改动：mode=1 表示仍按全向源处理，mode=2 表示转入定向稳健追踪。
+mode=zeros(1,20); certifiedDirectional=false(1,20); omniRefineCount=0;
+
+% 与基础款完全相同的25点确定性覆盖证书，不淘汰任何未发现频道。
+a=(0:11)*pi/6;
+stations=[[0;0],950*[cos(a);sin(a)],1865*[cos(a+pi/12);sin(a+pi/12)]];
+visited=false(1,size(stations,2));
+ang=(0:71)*2*pi/72;
+domain=1800/cos(pi/72)*[cos(ang);sin(ang)];
+
+reply=act('/enter'); limit=reply.remaining_real_duration_s;
+reason='search_complete';
+while true
+    if toc(clock0)>limit-10, reason='real_time_limit'; break; end
+    if sum(done)==16, reason='all_16_cleared'; break; end
+    left=find(~visited); pending=find(known & ~done);
+    if isempty(left)&&isempty(pending), break; end
+
+    % 与问题三/基础款一致：待清除源和剩余搜索站统一做开放路径排序。
+    tasks=[centers(:,pending),stations(:,left)];
+    tour=zeros(1,size(tasks,2)); pool=1:size(tasks,2); q=pos;
+    for routeStep=1:numel(tour)
+        [~,pick]=min(vecnorm(tasks(:,pool)-q));
+        tour(routeStep)=pool(pick); q=tasks(:,pool(pick)); pool(pick)=[];
+    end
+    improved=true;
+    while improved
+        improved=false; route=[pos,tasks(:,tour)];
+        for swapStart=1:numel(tour)-1
+            for swapEnd=swapStart+1:numel(tour)
+                old=norm(route(:,swapStart)-route(:,swapStart+1));
+                new=norm(route(:,swapStart)-route(:,swapEnd+1));
+                if swapEnd<numel(tour)
+                    old=old+norm(route(:,swapEnd+1)-route(:,swapEnd+2));
+                    new=new+norm(route(:,swapStart+1)-route(:,swapEnd+2));
+                end
+                if new<old-1e-7
+                    tour(swapStart:swapEnd)=fliplr(tour(swapStart:swapEnd));
+                    improved=true; route=[pos,tasks(:,tour)];
+                end
+            end
+        end
+    end
+    next=tour(1);
+    if next<=numel(pending)
+        k=pending(next); inLocal=true; localize(k); inLocal=false; continue;
+    end
+    stationId=left(next-numel(pending)); q=stations(:,stationId); visited(stationId)=true;
+
+    % 全局扫描条件与基础款相同，保留所有顺路获得方位线的机会。
+    list=find(~done & (~known | obsCount<6));
+    order=[channel,setdiff(list,channel,'stable')];
+    if ~ismember(channel,list), order=list; end
+    for k=order
+        observe(q,k,false);
+        if sum(done)==16, break; end
+    end
+end
+if toc(clock0)<=limit-5, act('/exit'); end
+out=struct('cleared',sum(done),'totalTime',vt,'averageTime',vt/max(1,sum(done)), ...
+    'complete',(all(visited)||sum(done)==16) && all(~known|done), ...
+    'reason',reason,'runtime',toc(clock0),'discoveryTime',discovered, ...
+    'clearTime',cleared,'observations',obsCount,'finalRadius',radii,'history',{history}, ...
+    'stationsVisited',sum(visited),'stationCount',size(stations,2), ...
+    'fallbackCount',fallbackCount,'raySweepCount',raySweepCount, ...
+    'globalDistance',globalDistance,'localDistance',localDistance, ...
+    'directionalModeCount',sum(mode==2),'certifiedDirectionalCount',sum(certifiedDirectional), ...
+    'p2Tests',omniRefineCount);
+if ~local
+    stamp=char(datetime('now','Format','yyyyMMdd_HHmmss'));
+    save(fullfile(root,['problem4_split_run_' stamp '.mat']),'out');
+    fprintf('问题四分流版：清除%d个，总时间%.2f s，平均%.2f s，完整排查=%d\n', ...
+        out.cleared,out.totalTime,out.averageTime,out.complete);
+end
+
+    function localize(k)
+        if done(k), return; end
+        if radii(k)<=20 && clearAt(centers(:,k),k), return; end
+
+        % 分流改动：尚未出现过失联时，先假设为全向源，直接复用问题三
+        % “区域中心+小幅侧移”的定位形式；点位落在1000 m保证区时，
+        % 一旦无信号便可严格确认定向，并立即退出本段。
+        if mode(k)==1 && radii(k)<=150
+            for omniStep=1:2
+                if done(k)||mode(k)==2, break; end
+                c=centers(:,k); r=radii(k);
+                if r<=60
+                    if clearAt(c,k), return; end
+                    hit=observe(pos,k,true);
+                else
+                    u=c-pos; if norm(u)<1e-9, u=[1;0]; end
+                    u=u/norm(u); side=min(80,r/2);
+                    q=c+side*[-u(2);u(1)];
+                    hit=observe(q,k,r+side<=1000);
+                end
+                omniRefineCount=omniRefineCount+1;
+                if ~hit, break; end
+                if radii(k)<=20 && clearAt(centers(:,k),k), return; end
+            end
+        end
+        if done(k), return; end
+
+        % 定向稳健段沿用基础款形式：在测向线两侧成对前探。
+        for round=1:5
+            if done(k), return; end
+            if radii(k)<=20 && clearAt(centers(:,k),k), return; end
+            q0=lastPos(:,k); th=lastTheta(k);
+            if any(~isfinite(q0))||~isfinite(th), break; end
+            U=min(1500,max(vecnorm(regions{k}-q0)));
+            if U<=600, raySweep(k,q0,th,U); return; end
+            u=[cos(th);sin(th)]; v=[-u(2);u(1)];
+            advance=min(490,0.6*U); side=advance*tan(deg2rad(1.005))+3;
+            probes=[q0+advance*u+side*v,q0+advance*u-side*v];
+            if norm(probes(:,2)-pos)<norm(probes(:,1)-pos), probes=fliplr(probes); end
+            hit=observe(probes(:,1),k,false);
+            if ~done(k)&&~hit, hit=observe(probes(:,2),k,false); end
+            if done(k), return; end
+            if ~hit
+                mode(k)=2;
+                raySweep(k,q0,th,advance/cos(deg2rad(1.005))+1); return;
+            end
+            if clearAt(lastPos(:,k),k), return; end
+        end
+        if done(k), return; end
+
+        fallbackCount=fallbackCount+1;
+        u=[cos(firstTheta(k));sin(firstTheta(k))]; v=[-u(2);u(1)];
+        xs=0:28:1512; ys=[-42,-14,14,42];
+        paths=cell(1,4); d0=inf(1,4); c=0;
+        for flipY=0:1
+            yy=ys; if flipY, yy=fliplr(yy); end
+            for flipX=0:1
+                c=c+1; P=zeros(2,numel(xs)*numel(yy)); t=0;
+                for r=1:numel(yy)
+                    xx=xs; if mod(r+flipX,2)==0, xx=fliplr(xx); end
+                    Q=firstPos(:,k)+u*xx+v*(yy(r)*ones(size(xx)));
+                    P(:,t+(1:numel(xx)))=Q; t=t+numel(xx);
+                end
+                paths{c}=P; d0(c)=norm(P(:,1)-pos);
+            end
+        end
+        [~,c]=min(d0); P=paths{c};
+        for fallbackPoint=1:size(P,2)
+            if clearAt(P(:,fallbackPoint),k), return; end
+        end
+        error('光学窄带兜底失败：请检查测向误差或模拟器规则。');
+    end
+
+    function raySweep(k,q0,th,U)
+        raySweepCount=raySweepCount+1; epsA=deg2rad(1.005);
+        halfWidth=U*sin(epsA); assert(halfWidth<20,'测向带过宽，不能单线覆盖。');
+        step=1.98*sqrt(20^2-halfWidth^2);
+        xs=step/2:step:U+step/2; u=[cos(th);sin(th)]; P=q0+u*xs;
+        if norm(P(:,end)-pos)<norm(P(:,1)-pos), P=fliplr(P); end
+        for sweepPoint=1:size(P,2)
+            if clearAt(P(:,sweepPoint),k), return; end
+        end
+        error('测向带直线覆盖失败：请检查误差上界或距离上界。');
+    end
+
+    function hit=observe(q,k,rangeCertified)
+        if known(k) && ~rangeCertified, rangeCertified=rangeGuaranteed(q,k); end
+        z=act('/measure',q,k); hit=~strcmp(z.measure_result,'no_signal');
+        if ~hit
+            if known(k) && mode(k)==1
+                % 用户提出的“先全向、出现时有时无再按定向处理”。普通
+                % 失联只改变求解分支；保证在接收距离内时还可严格确认定向。
+                mode(k)=2;
+                if rangeCertified, certifiedDirectional(k)=true; end
+            end
+            return;
+        end
+        if ~known(k)
+            known(k)=true; mode(k)=1; discovered(k)=vt; regions{k}=domain;
+        end
+        if strcmp(z.measure_result,'near')
+            assert(clearAt(q,k),'near 后光学清除失败。'); return;
+        end
+        th=deg2rad(z.svd_deg); obsCount(k)=obsCount(k)+1;
+        lastPos(:,k)=q; lastTheta(k)=th;
+        if obsCount(k)==1, firstPos(:,k)=q; firstTheta(k)=th; end
+        [n1,b1,n2,b2]=wedge_planes(q,th,deg2rad(1.005));
+        V=clip_halfplane(regions{k},n1,b1+1e-7);
+        V=clip_halfplane(V,n2,b2+1e-7);
+        u=[cos(th);sin(th)]; V=clip_halfplane(V,u,u'*q+1500+1e-7);
+        assert(~isempty(V),'交会区域为空：观测与误差模型不相容。');
+        regions{k}=V; D=diameter_many({V'});
+        if D<=20, c=V(:,1); r=D;
+        else, [c,r]=welzl_mec(V,cfg); end
+        centers(:,k)=c; radii(k)=max(r,max(vecnorm(V-c)));
+    end
+
+    function yes=rangeGuaranteed(q,k)
+        % 问题二思想的在线判据：若Q距整个可能区域均不超过1000 m，
+        % 或Q对所有候选位置都不比上次有信号点远，则全向源必有信号。
+        V=regions{k}; yes=max(vecnorm(V-q))<=1000+1e-7;
+        if ~yes && all(isfinite(lastPos(:,k)))
+            s=lastPos(:,k);
+            yes=max(2*(s-q)'*V+q'*q-s'*s)<=1e-7;
+        end
+    end
+
+    function success=clearAt(q,k)
+        z=act('/clear',q,k); success=strcmp(z.clear_result,'success');
+        if success, done(k)=true; cleared(k)=vt; end
+    end
+
+    function z=act(path,q,k)
+        if ~strcmp(path,'/exit')&&toc(clock0)>limit-5
+            error('现实时间不足，停止发送新动作。');
+        end
+        serial=serial+1;
+        request=struct('arena_id','default','robot_id',robotId, ...
+            'request_id',sprintf('p4split-%d',serial));
+        if nargin>1
+            request.position=struct('x',q(1),'y',q(2)); request.channel=k;
+        end
+        for attempt=1:3
+            try
+                if local, z=transport(path,request);
+                else, z=webwrite([baseUrl path],request,opt); end
+                break;
+            catch err
+                if attempt==3, rethrow(err); end
+            end
+        end
+        assert(z.accepted,'模拟器拒绝请求：%s',jsonencode(z)); vt=z.virtual_time_s;
+        if nargin>1
+            if inLocal, localDistance=localDistance+norm(q-pos);
+            else, globalDistance=globalDistance+norm(q-pos); end
+            pos=q;
+        end
+        if strcmp(path,'/measure'), channel=k; end
+        history(end+1,:)={path,request,z};
+    end
+end
+
+\end{lstlisting}
 
 \end{appendices}
 
