@@ -1,6 +1,7 @@
 % get_continuous_region.m
 % 读取 results/out.mat，利用真实的评价函数 eval_P_bounds 在候选点附近进行密集网格采样，
 % 从而找出严格满足精度容差 (U(P) <= m_hat + epsilon) 的连续可行区域，并绘制热力图。
+% 输出两张图：局部图（fig4_continuous_region_local.png）和全局图（fig4_continuous_region_global.png）
 
 function get_continuous_region()
     root = fileparts(mfilename('fullpath'));
@@ -13,92 +14,107 @@ function get_continuous_region()
     P_fines = [out.fines.P];
     Q = P_fines(:, out.near_indices);
     
-    % 为了让图片局部放大且好看，我们只关注最终选定点所在的那一半平面（上下对称）
+    % 目标阈值
+    threshold = out.m_hat + cfg.tau_m;
+    fprintf('真实的最优上界基准 m_hat = %.4f m\n', out.m_hat);
+    fprintf('寻找满足 U(P) <= %.4f m (m_hat + %.1f) 的连续区域\n', threshold, cfg.tau_m);
+    
+    cfg.kill_threshold = threshold;
+    cfg.eval_tol = cfg.tol_fine;
+    cfg.eval_budget = 400;
+    
+    [Eb,~] = E_polygon(cfg);
+    
+    % ================= 1. 局部图计算 =================
     if out.P_f2(2) > 0
         Q_local = Q(:, Q(2,:) > 0);
     else
         Q_local = Q(:, Q(2,:) < 0);
     end
     
-    % 定义包含该局部最优点的网格边界 (加上一定裕量，不要太大也不要太小，能够看到完整的局部边界)
-    margin = 15; % 米
-    min_x = min(Q_local(1,:)) - margin;
-    max_x = max(Q_local(1,:)) + margin;
-    min_y = min(Q_local(2,:)) - margin;
-    max_y = max(Q_local(2,:)) + margin;
+    margin_l = 15;
+    min_x_l = min(Q_local(1,:)) - margin_l; max_x_l = max(Q_local(1,:)) + margin_l;
+    min_y_l = min(Q_local(2,:)) - margin_l; max_y_l = max(Q_local(2,:)) + margin_l;
     
-    % 生成 50x50 的高密度网格进行采样
-    grid_size = 50;
-    x_vec = linspace(min_x, max_x, grid_size);
-    y_vec = linspace(min_y, max_y, grid_size);
-    [X, Y] = meshgrid(x_vec, y_vec);
-    Z_U = NaN(size(X)); % 记录上界 U(P)
+    grid_size_l = 50;
+    x_vec_l = linspace(min_x_l, max_x_l, grid_size_l);
+    y_vec_l = linspace(min_y_l, max_y_l, grid_size_l);
+    [X_l, Y_l] = meshgrid(x_vec_l, y_vec_l);
+    Z_U_l = NaN(size(X_l));
     
-    % 目标阈值
-    threshold = out.m_hat + cfg.tau_m;
-    fprintf('真实的最优上界基准 m_hat = %.4f m\n', out.m_hat);
-    fprintf('寻找满足 U(P) <= %.4f m (m_hat + %.1f) 的连续区域\n', threshold, cfg.tau_m);
-    
-    % 为加快计算，当下界 L 超过阈值时可提前终止
-    cfg.kill_threshold = threshold;
-    cfg.eval_tol = cfg.tol_fine; % 必须使用精评容差，否则提前退出会导致 U(P) 虚高
-    cfg.eval_budget = 400; % 需要足够大的预算让真正的好点收敛
-    
-    [Eb,~] = E_polygon(cfg);
-    
-    fprintf('开始对 %dx%d 网格进行真实包围半径的严密计算...\n', grid_size, grid_size);
+    fprintf('开始对局部的 %dx%d 网格进行严密计算...\n', grid_size_l, grid_size_l);
     tic;
-    for i = 1:numel(X)
-        P_test = [X(i); Y(i)];
-        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:))
-            continue;
-        end
-        % 使用真实的评价函数计算
+    for i = 1:numel(X_l)
+        P_test = [X_l(i); Y_l(i)];
+        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:)), continue; end
         res = eval_P_bounds(P_test, cfg);
-        Z_U(i) = res.U;
+        Z_U_l(i) = res.U;
     end
-    t_calc = toc;
-    fprintf('网格计算完成，耗时 %.2f 秒。\n', t_calc);
+    fprintf('局部网格计算完成，耗时 %.2f 秒。\n', toc);
     
-    % 绘图展示
-    f = figure('Color', 'w', 'Position', [100 100 850 650], 'Visible', 'off');
-    hold on;
+    % ================= 2. 全局图计算 =================
+    margin_g = 15;
+    min_x_g = min(Eb(1,:)) - margin_g; max_x_g = max(Eb(1,:)) + margin_g;
+    min_y_g = min(Eb(2,:)) - margin_g; max_y_g = max(Eb(2,:)) + margin_g;
     
-    % 画出连续区域的等高线/热力填充
-    % 我们主要关心 <= threshold 的区域
+    grid_size_g = 60;
+    x_vec_g = linspace(min_x_g, max_x_g, grid_size_g);
+    y_vec_g = linspace(min_y_g, max_y_g, grid_size_g);
+    [X_g, Y_g] = meshgrid(x_vec_g, y_vec_g);
+    Z_U_g = NaN(size(X_g));
+    
+    fprintf('开始对全局的 %dx%d 网格进行严密计算...\n', grid_size_g, grid_size_g);
+    tic;
+    for i = 1:numel(X_g)
+        P_test = [X_g(i); Y_g(i)];
+        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:)), continue; end
+        res = eval_P_bounds(P_test, cfg);
+        Z_U_g(i) = res.U;
+    end
+    fprintf('全局网格计算完成，耗时 %.2f 秒。\n', toc);
+    
     levels = linspace(out.m_hat, threshold, 6);
-    contourf(X, Y, Z_U, levels, 'LineStyle', 'none');
-    colormap(flipud(parula)); % 颜色越深代表 U(P) 越小(越优)
+    
+    % ================= 绘制局部图 =================
+    fl = figure('Color', 'w', 'Position', [100 100 850 650], 'Visible', 'off');
+    hold on;
+    contourf(X_l, Y_l, Z_U_l, levels, 'LineStyle', 'none');
+    colormap(flipud(parula));
     colorbar('Ticks', levels, 'TickLabels', arrayfun(@(x) sprintf('%.2f', x), levels, 'UniformOutput', false));
-    
-    % 画出满足阈值的确切边界 (最外层轮廓)
-    [C, h] = contour(X, Y, Z_U, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
-    
-    % 画出背景 E 区域边界作为参考
+    [~, h_cl] = contour(X_l, Y_l, Z_U_l, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
     plot(Eb(1,:), Eb(2,:), 'k.', 'MarkerSize', 2, 'DisplayName', 'Region E Boundary');
-    
-    % 画出原本离散搜索得到的好点
     scatter(Q(1,:), Q(2,:), 40, 'mo', 'filled', 'MarkerEdgeColor', 'w', 'DisplayName', 'Discrete Candidates');
-    
-    % 画出最终选定的单点
     plot(out.P_f2(1), out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Point P');
-    
     axis equal; grid on;
-    % 恢复局部的 xlim 和 ylim 限制，以展示放大的局部边界区域
-    xlim([min_x, max_x]); ylim([min_y, max_y]);
+    xlim([min_x_l, max_x_l]); ylim([min_y_l, max_y_l]);
     xlabel('x (m)'); ylabel('y (m)');
-    % 根据要求，不在图片上生成自带标题
     legend('Location', 'best');
     
-    % 计算连续区域的近似面积 (由于上下对称，总面积需要乘以 2)
-    dx = x_vec(2) - x_vec(1);
-    dy = y_vec(2) - y_vec(1);
-    area_approx = sum(Z_U(:) <= threshold) * dx * dy * 2;
-    fprintf('上下两侧严格满足条件的连续可行区域总面积约为: %.2f 平方米\n', area_approx);
+    save_path_l = fullfile(cfg.fig_dir, 'fig4_continuous_region_local.png');
+    exportgraphics(fl, save_path_l, 'Resolution', 250, 'BackgroundColor', 'white');
+    close(fl);
     
-    % 保存图片
-    save_path = fullfile(cfg.fig_dir, 'fig4_continuous_region_rigorous.png');
-    exportgraphics(f, save_path, 'Resolution', 250, 'BackgroundColor', 'white');
-    close(f);
-    fprintf('已将严密的连续区域分布图保存至: %s\n', save_path);
+    % ================= 绘制全局图 =================
+    fg = figure('Color', 'w', 'Position', [200 200 850 650], 'Visible', 'off');
+    hold on;
+    contourf(X_g, Y_g, Z_U_g, levels, 'LineStyle', 'none');
+    colormap(flipud(parula));
+    colorbar('Ticks', levels, 'TickLabels', arrayfun(@(x) sprintf('%.2f', x), levels, 'UniformOutput', false));
+    [~, h_cg] = contour(X_g, Y_g, Z_U_g, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
+    plot(Eb(1,:), Eb(2,:), 'k-', 'LineWidth', 1.5, 'DisplayName', 'Region E Boundary');
+    scatter(Q(1,:), Q(2,:), 20, 'mo', 'filled', 'MarkerEdgeColor', 'w', 'DisplayName', 'Discrete Candidates');
+    
+    plot(out.P_f2(1), out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Point P');
+    plot(out.P_f2(1), -out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'HandleVisibility', 'off');
+    
+    axis equal; grid on;
+    xlim([min_x_g, max_x_g]); ylim([min_y_g, max_y_g]);
+    xlabel('x (m)'); ylabel('y (m)');
+    legend('Location', 'best');
+    
+    save_path_g = fullfile(cfg.fig_dir, 'fig4_continuous_region_global.png');
+    exportgraphics(fg, save_path_g, 'Resolution', 250, 'BackgroundColor', 'white');
+    close(fg);
+    
+    fprintf('已将全局和局部的连续区域分布图保存至 figures 目录\n');
 end

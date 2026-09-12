@@ -666,51 +666,58 @@ $[\QBestL,\QBestU]$ 米。
 候选区域的整体分布、粗候选点与精评点的相对位置，以及最终入选点的几何关系，
 如图~\ref{fig:q2overview}所示。
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\linewidth]{\qtwopath figures/fig1_overview.png}
+\caption{候选点概览图}
+\label{fig:q2overview}
+\end{figure}
+
 此外，为了寻找严格满足精度容差的连续可行区域，
 我们在包含离散优良点集的局部候选框内生成了高密度网格，并利用前述评价函数进行了严密求交与测算。
 结果成功绘制出了满足 $U(P) \le \widehat m + \varepsilon$ 的连续区域边界及其评价热力图，
 如图~\ref{fig:q2continuous_region}所示。
 
-图中的热力颜色深浅反映了对应位置最差包围半径的大小，
-清晰界定了最优靶区的局部边界。经严格测算，上下两侧完全满足精度容差的连续可行区域总面积约为 $1730.05$ 
-平方米，这为无人机的最终移动与降落定位提供了充裕的容错空间。
-
-\begin{figure}[!h]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\linewidth]{\qtwopath figures/fig4_continuous_region_rigorous.png}
+\begin{subfigure}{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{\qtwopath figures/fig4_continuous_region_global.png}
+\caption{全局视图}
+\label{fig:q2continuous_region_global}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{\qtwopath figures/fig4_continuous_region_local.png}
+\caption{局部放大图}
+\label{fig:q2continuous_region_local}
+\end{subfigure}
 \caption{严格满足精度容差的连续可行区域热力图}
 \label{fig:q2continuous_region}
 \end{figure}
-验证包括已知圆的恢复、与枚举最小包围圆对照、镜像对称、
-近共线情形、角度跨周、孔边界包含关系及缓存续算。
-通过加密角度采样核对结果，但连续角域上界依靠式~\eqref{eq:q2bounds}，
-不依靠采样最大值。可选敏感性实验分别改变 $\tau$ 和精评容差。
 
-\begin{figure}[!h]
-\centering
-\includegraphics[width=0.85\linewidth]{\qtwopath figures/fig1_overview.png}
-\caption{候选点概览图}
-\label{fig:q2overview}
-\end{figure}
+图中的热力颜色深浅反映了对应位置最差包围半径的大小，
+界定了最优靶区的局部边界。经严格测算，上下两侧完全满足精度容差的连续可行区域总面积约为 $1730.05$ 
+平方米，这为无人机的最终移动与降落定位提供了足够的容错空间。
 
 所选点在一个较差采样读数下，其定位区域与外近似包围圆的覆盖关系，
-如图~\ref{fig:q2region}所示。所选点在一个较差采样读数下的
-定位区域与外近似包围圆。该圆覆盖真实区域；图中读数不被宣称为精确最坏读数。
+如图~\ref{fig:q2region}所示。
 
-\begin{figure}[!h]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.68\linewidth]{\qtwopath figures/fig2_worst_region.png}
+\includegraphics[width=0.4\linewidth]{\qtwopath figures/fig2_worst_region.png}
 \caption{最坏区域覆盖图}
 \label{fig:q2region}
 \end{figure}
 
 最优精评候选点的评分上下界随计算推进的收敛过程，
-如图~\ref{fig:q2convergence}所示。最优精评候选点的
+如图~\ref{fig:q2convergence}所示，展示最优精评候选点的
 评分上下界及区间宽度随计算推进的变化。
 
-\begin{figure}[!h]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\linewidth]{\qtwopath figures/fig3_convergence.png}
+\includegraphics[width=0.65\linewidth]{\qtwopath figures/fig3_convergence.png}
 \caption{上下界收敛图}
 \label{fig:q2convergence}
 \end{figure}
