@@ -1,0 +1,30 @@
+R = 1800; r_cover = 1000;
+[X, Y] = meshgrid(linspace(-R, R, 200));
+mask = X.^2 + Y.^2 <= R^2;
+Px = X(mask); Py = Y(mask);
+N_target = length(Px);
+dx = r_cover * sqrt(3) / 2 * 0.8; 
+dy = r_cover * 3/4 * 0.8;
+[CX, CY] = meshgrid(-R-r_cover:dx:R+r_cover, -R-r_cover:dy:R+r_cover);
+shift = repmat([0, dx/2], size(CX,1), ceil(size(CX,2)/2));
+shift = shift(:, 1:size(CX,2));
+CX = CX + shift;
+c_mask = CX.^2 + CY.^2 <= (R + r_cover)^2; 
+Cx = CX(c_mask); Cy = CY(c_mask);
+N_cand = length(Cx);
+A = zeros(N_target, N_cand);
+for j = 1:N_cand
+    dist2 = (Px - Cx(j)).^2 + (Py - Cy(j)).^2;
+    A(:, j) = (dist2 <= r_cover^2);
+end
+f = ones(N_cand, 1);
+intcon = 1:N_cand;
+b = -ones(N_target, 1);
+options = optimoptions('intlinprog', 'Display', 'off');
+[x_opt, fval, exitflag] = intlinprog(f, intcon, -A, b, [], [], zeros(N_cand,1), ones(N_cand,1), options);
+disp(['Optimal points: ', num2str(round(fval))]);
+sel = x_opt > 0.5;
+Sel_X = Cx(sel); Sel_Y = Cy(sel);
+pts = [Sel_X, Sel_Y];
+disp('Points:');
+disp(pts);

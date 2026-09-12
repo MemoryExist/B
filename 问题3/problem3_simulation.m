@@ -28,11 +28,48 @@ sources_pos = [r .* cos(theta), r .* sin(theta)];
 sources_state = zeros(num_sources, 1);
 detection_history = cell(num_sources, 1); % 记录每个源的所有历史探测点坐标
 
-%% 3. 全局探测点设置 (7点完美覆盖)
-D_hex = 1150;
-angles_hex = linspace(0, 2*pi, 7); angles_hex(end) = [];
-global_points = [0, 0; D_hex * cos(angles_hex'), D_hex * sin(angles_hex')];
-global_path_idx = [1, 2, 3, 4, 5, 6, 7];
+%% 3. 全局探测点设置 (基于 Kershner 正六边形密铺与 ILP)
+% 采用问题2/4中严密的集合覆盖算法，确保100%无死角覆盖
+D_cover = 1000; % 问题3全向干扰源覆盖半径
+[X_grid, Y_grid] = meshgrid(linspace(-1800, 1800, 100));
+mask_grid = X_grid.^2 + Y_grid.^2 <= 1800^2;
+Px = X_grid(mask_grid); Py = Y_grid(mask_grid);
+dx = D_cover * sqrt(3) / 2 * 0.85;
+dy = D_cover * 3/4 * 0.85;
+[CX, CY] = meshgrid(-1800-D_cover:dx:1800+D_cover, -1800-D_cover:dy:1800+D_cover);
+shift = repmat([0, dx/2], size(CX,1), ceil(size(CX,2)/2));
+shift = shift(:, 1:size(CX,2));
+CX = CX + shift;
+c_mask = CX.^2 + CY.^2 <= (1800 + D_cover)^2;
+Cx = CX(c_mask); Cy = CY(c_mask);
+A_mat = zeros(length(Px), length(Cx));
+for j = 1:length(Cx)
+    A_mat(:, j) = ((Px - Cx(j)).^2 + (Py - Cy(j)).^2 <= D_cover^2);
+end
+f_ilp = ones(length(Cx), 1);
+options_ilp = optimoptions('intlinprog', 'Display', 'off');
+[x_opt, ~] = intlinprog(f_ilp, 1:length(Cx), -A_mat, -ones(length(Px), 1), [], [], zeros(length(Cx),1), ones(length(Cx),1), options_ilp);
+sel = x_opt > 0.5;
+global_points = [Cx(sel), Cy(sel)];
+
+% 使用全排列暴力求解精确的最短 TSP 路径 (点数较少，计算极快)
+start_pt = [0, 0];
+N_pts = size(global_points, 1);
+perms_all = perms(1:N_pts);
+best_dist = inf;
+global_path_idx = [];
+
+for i = 1:size(perms_all, 1)
+    curr_tour = perms_all(i, :);
+    dist = norm(global_points(curr_tour(1),:) - start_pt);
+    for j = 1:N_pts-1
+        dist = dist + norm(global_points(curr_tour(j+1),:) - global_points(curr_tour(j),:));
+    end
+    if dist < best_dist
+        best_dist = dist;
+        global_path_idx = curr_tour;
+    end
+end
 current_global_idx = 1;
 
 %% 4. 仿真主循环
@@ -161,14 +198,34 @@ while cleared_count < num_sources
         plot([current_pos(1), target_pos(1)], [current_pos(2), target_pos(2)], 'm-.', 'LineWidth', 1.5);
         current_pos = target_pos;
 
+    elseif ~isempty(find(sources_state == 1, 1))
+        % 优先2.5：有只发现1次的漏网之鱼 (只有1条射线)
+        % 核心改进：在前往下一个全局点之前，先把当前全局点附近探测到的源找完！避免全局大跨度折返。
+        idx_state1 = find(sources_state == 1);
+        dists = vecnorm(sources_pos(idx_state1,:) - current_pos, 2, 2);
+        [~, min_idx] = min(dists);
+        target_idx = idx_state1(min_idx);
+
+        % 采纳问题2的处理方法：只有1个探测点时，沿该射线前进一段距离获取完美的交叉角
+        p1 = detection_history{target_idx}(1,:);
+        true_pos = sources_pos(target_idx, :);
+        ray_dir = (true_pos - p1) / norm(true_pos - p1);
+        % 沿射线飞行500米作为第二个检测点
+        target_pos = p1 + ray_dir * 500;
+
+        move_dist = norm(target_pos - current_pos);
+        total_time = total_time + move_dist / speed;
+        total_distance = total_distance + move_dist;
+
+        plot([current_pos(1), target_pos(1)], [current_pos(2), target_pos(2)], 'k-.', 'LineWidth', 1.5);
+        current_pos = target_pos;
+
     else
         % 优先3：继续走全局探测点开图
         current_global_idx = current_global_idx + 1;
         if current_global_idx > length(global_path_idx)
-            % 若全局点走完仍有漏网之鱼(极少概率，比如一直只有1条射线)
-            % 强制飞向其大概方向
-            remaining_idx = find(sources_state == 1 | sources_state == 0);
-            target_pos = sources_pos(remaining_idx(1), :);
+            % 如果全局点已经走完，但还有没发现的点（理论上 ILP 保证全覆盖不会出现 state 0，兜底防崩溃）
+            target_pos = current_pos + [50, 50];
         else
             target_pos = global_points(global_path_idx(current_global_idx), :);
         end

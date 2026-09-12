@@ -129,7 +129,7 @@ $\text{直径}=\max_{i<j} \left\| v_i-v_j \right\| =\max_{i<j} \sqrt{\left( x_i-
 
 \subsection{问题4分析}
 \section{模型的建立与求解}
-\subsection{问题1：交会定位区域及其直径的数学模型与求解}
+\subsection{问题1：交会区域直径的计算}
 \subsubsection{交会定位区域的建立}
 
 \begin{figure}[H]
@@ -143,18 +143,17 @@ $\text{直径}=\max_{i<j} \left\| v_i-v_j \right\| =\max_{i<j} \sqrt{\left( x_i-
 对应测得的示向度为 $\theta_i\in[0^\circ,360^\circ)$。根据附录2，测向机的示向度与干扰源真实方位角之间的误差绝对值不超过 $\tau=1^\circ$。
 设干扰源真实位置为 $G$，则在第 $i$ 个检测点处，其真实方位角 $\beta_i=\arg(G-S_i)$
 满足
-$\beta_i=\arg(G-S_i)$ 满足
 $\left|\operatorname{wrap}(\beta_i-\theta_i)\right|\leq \tau$。
-其中偏差的取值通过
+其中偏差的取值通过公式
 \[
 \operatorname{wrap}(x) = x-360^\circ \left\lfloor\frac{x+180^\circ}{360^\circ}\right\rfloor .
 \]
-统一折算到 $(-180^\circ,180^\circ]$ 区间内，以避免角度周期性带来的误判。
-由此，仅利用第 $i$ 个检测点的测量结果，就可以把关：干扰源一定落在以 $S_i$ 为顶点、以 $\theta_i-\tau$ 和 $\theta_i+\tau$ 为两条边界射线的角形区域内。我们把这块区域记为第 $i$ 个检测点的视界楔形
+统一折算到 $(-180^\circ,180^\circ]$ 区间内，利用wrap函数避免角度周期性带来的误判。
+而对于每个检测点 $S_i$ ，干扰源一定落在以 $S_i$ 为顶点、以 $\theta_i-\tau$ 和 $\theta_i+\tau$ 为两条边界射线的角形区域内。我们把这块区域记为第 $i$ 个检测点的视界楔形
 \begin{equation}
 W_i= \left\{ P: P=S_i \ \text{或}\ \left|\operatorname{wrap} \bigl(\arg(P-S_i)-\theta_i\bigr)\right| \leq\tau \right\}.
 \end{equation}
-由于干扰源的真实位置只有一个，它必须同时落进每一个检测点开出的这块“视野”里，把两者取交集，就得到交会定位区域
+由于干扰源的真实位置只有一个，它必须同时落进每一个检测点的视界楔形中，因此交会定位区域实际上就是所有视界楔形的交集
 \begin{equation}
 \mathcal R=\bigcap_{i=1}^n W_i.
 \end{equation}
