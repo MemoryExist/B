@@ -298,24 +298,28 @@ D=\max_{i<j}d_{ij}.
 \end{equation}
 \end{enumerate}
 
-\subsubsection{求解定位区域直径的Matlab方法}
+\subsubsection{Matlab求解方法}
 
 在对半平面求交得到 $\mathcal R$ 的顶点 $V_1,\ldots,V_m$（$m\leq2n$） 后，我们需要求解以下非线性规划问题：
-
 
 \begin{equation}
 \begin{aligned}
 \max_{V_i, V_j} \quad & \|V_i - V_j\|_2 \\
 \text{s.t.} \quad & \begin{cases}
-V_i \in \mathcal{R}, \\
-V_j \in \mathcal{R}, \\
-\mathcal{R} = \bigcap_{k=1}^{2n} \left\{ X : n_k \cdot X \leq c_k \right\}.
+V_i, V_j \in \mathcal{R}, \\
+\mathcal{R} = \bigcap_{k=1}^{2n} \left\{ X : n_k \cdot X \leq c_k \right\}, \\
+n_k \cdot X \leq c_k \text{ 为半平面的函数表达式}.
 \end{cases}
 \end{aligned}
 \end{equation}
 
 若直接枚举顶点对，直径计算的复杂度为 $O(m^2)$，再代入 $m\leq2n$，可进一步写为 $O(n^2)$。
-当顶点已按凸多边形边界顺序排列时，也可以进一步利用旋转卡壳算法将直径计算降至 $O(m)$。
+当顶点已按凸多边形边界顺序排列时，也可以进一步利用旋转卡壳算法将直径计算降至 $O(m)$，而考虑到
+问题中检测点数量一般较少，因此我们真正需要的是可以快速求解大数量但边数较少的闭凸多边形直径的算法；
+旋转卡壳算法适用于检测点数量较少，但边数较多的闭凸多边形直径的计算，虽然降低了复杂度但速度并没有提升太多
+且其代码容易出错，经综合考量后我们决定采用代码更为稳定，适用于求解大数量数据的向量化求解算法。
+
+
 
 \subsubsection{以定位区域直径为直径的圆能否覆盖定位区域}
 
