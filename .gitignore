@@ -1,1 +1,13 @@
 .DS_Store
+# LaTeX 临时文件
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.xdv
+
+# 忽略按时间戳生成的 MATLAB 临时数据
+*_run_*.mat
