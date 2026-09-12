@@ -1,0 +1,19 @@
+# Fdb version 4
+["xdvipdfmx"] 0 "primary template.xdv" "primary template.pdf" "primary template" 0 -1
+  "primary template.xdv" 0 -1 0 "xelatex"
+  (generated)
+  "primary template.pdf"
+  (rewritten before read)
+["xelatex"] 1789190765.9572 "/Users/liuze/Documents/ChatGPT/数学建模国赛B题/primary template.tex" "primary template.xdv" "primary template" 1789190766.144 2
+  "/Users/liuze/Documents/ChatGPT/数学建模国赛B题/primary template.tex" 1789163843.89253 21387 358e94cd7c3d4c0d4b0f55816243310a ""
+  "/usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf" 1770478701 43630 e9fa012910491fe5ae08a72c3c2997a7 ""
+  "/usr/local/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt" 1786261663 5948571 4664cf6c860cf2ce3dd12bef24a93ae6 ""
+  "/usr/local/texlive/2026/texmf.cnf" 1774209515 577 648cd9f92f9c0eac486f4c71c85cfbbe ""
+  "cumcmthesis.cls" 0 -1 0 ""
+  "primary template.aux" 1789190757.95675 32 3985256e7290058c681f74d7a3565a19 "xelatex"
+  "primary template.tex" 1789163843.89253 21387 358e94cd7c3d4c0d4b0f55816243310a ""
+  (generated)
+  "primary template.aux"
+  "primary template.log"
+  "primary template.xdv"
+  (rewritten before read)
