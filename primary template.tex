@@ -433,11 +433,13 @@ E &= \bigcap_{i=1}^{4} \left\{ P : \|P-G_i\| \le 1000 \right\} \\
 仅仅有待测区域的确定还不够，我们还需要知道该区域内每个点所交会产生图形的最差包围圆半径的大小来衡量这个位置定位的精度。
 
 记 $W(P;\beta,\tau)$ 为检测点 $P$、中心方向 $\beta$、半角 $\tau$ 的前向楔形。
-正常读数 $\beta$ 对应的定位区域为
+正常读数 $\beta$ 对应的定位区域为：
+
 \begin{equation}
 J(P,\beta)=E_0\cap W(P;\beta,\tau)\cap\{G:\|G-P\|>5\}.
 \label{eq:q2J}
 \end{equation}
+
 距离源不超过 $5$ 米时，仪器无法给出示向度，应直接采用光学定位与清除。
 楔形约束还可改写为两条线性不等式：
 
@@ -476,15 +478,19 @@ f_1(P)=\sup_{\beta\in\Theta(P)}\rho(J(P,\beta)).
 C=\left(\frac{1500}{1+\sin\tau},0\right),\qquad
 r_*=\frac{1500\sin\tau}{1+\sin\tau}\approx25.730.
 \end{equation*}
+
 圆盘 $B(C,r_*)$ 内切于扇区，且完全位于首站 $5$ 米排除区之外。
 由 $P\in E$ 得 $\|P\|\le1005$，而 $\|C\|-r_*>1448$，
 所以从 $P$ 指向 $C$ 的射线穿过该圆盘的一条完整直径，
 直径上的点距 $P$ 均大于 $5$ 米且与同一读数相容。
-因此
+因此：
+
 \begin{equation*}
 f_1(P)\ge r_*>20,\qquad P\in E.
 \end{equation*}
+
 这给出不可行性的下界证明，并不表示最优半径能达到 $r_*$.因此对每个点位置打分来衡量优劣是必要的。
+
 由于原始定义涉及的不可解圆弧与复杂多边形求交，计算量巨大，我们首先引入线性化近似，对候选区域进行粗略打分以筛选大部分无效点，然后再对剩余候选点进行高精度精确打分。
 
 \subsubsection{第一阶段打分（粗筛）}
@@ -499,16 +505,19 @@ f_1(P)\ge r_*>20,\qquad P\in E.
 |\Delta v|\le r\tau,\qquad
 |y\Delta u+(r-x)\Delta v|\le\bigl((r-x)^2+y^2\bigr)\tau .
 \end{equation*}
+
 其包围半径（即粗筛阶段的评分公式）为：
+
 \begin{equation}
 \widehat\rho(r;P)=\tau
 \sqrt{r^2+\frac{\left((r-x)^2+y^2+r|r-x|\right)^2}{y^2}},
 \qquad y\ne0.
 \label{eq:q2surrogate}
 \end{equation}
-我们发现该近似模型中，径向最坏误差必然在区间的两端（$r=5$ 或 $r=1500$）取得。
 
+我们发现该近似模型中，径向最坏误差必然在区间的两端（$r=5$ 或 $r=1500$）取得。
 具体的推导过程如下：令
+
 \[
 H(r)=(r-x)^2+y^2+r|r-x|
 =\max\{x^2+y^2-xr,\ 2r^2-3xr+x^2+y^2\},\quad r\ge0.
@@ -532,6 +541,7 @@ H(r)=(r-x)^2+y^2+r|r-x|
 \begin{equation}
 \widehat f_1(P)=\max\{\widehat\rho(5;P),\widehat\rho(1500;P)\}.
 \end{equation}
+
 这一端点定理极大地减少了搜索空间。但该结论仅适用于线性化指标，不适用于真实的几何区域模型。
 因此 $\widehat f_1$ 仅用于第一阶段极速打分排序用以降低计算量；$y=0$ 的奇异点则直接交由第二阶段模型评价。
 
@@ -544,6 +554,7 @@ H(r)=(r-x)^2+y^2+r|r-x|
 \angle(G_i-P,G_j-P)\le2\tau}}
 \frac{\|G_i-G_j\|}{2}\le f_1(P).
 \end{equation}
+
 无符合条件的点对时取下界 $0$。设已有某候选点的评分上界为
 $U_{\rm best}$，若 $\ell_{\rm pair}(P)>U_{\rm best}+\tau$，
 则可排除该点，不予进一步细算。
