@@ -25,3 +25,4 @@ save(fullfile(cfg.results_dir, 'out.mat'), 'out', 'cfg', 'V', 'S', '-v7');
 fprintf('完成：搜索 %.2f s，总计 %.2f s（均不含 MATLAB 启动）。\n', out.t_total, out.t_run);
 fprintf('数值及论文数据：results/；图：figures/。\n');
 end
+
