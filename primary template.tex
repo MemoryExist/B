@@ -1,4 +1,4 @@
-﻿% !TEX root = primary template.tex
+% !TEX root = primary template.tex
 %!TEX program = xelatex
 
 % 1. 文档类必须放在最顶端（最第一行）
@@ -130,6 +130,10 @@ $\text{直径}=\max_{i<j} \left\| v_i-v_j \right\| =\max_{i<j} \sqrt{\left( x_i-
 \subsection{问题4分析}
 \section{模型的建立与求解}
 \subsection{问题1：交会区域直径的计算}
+
+为了求得定位区域直径，我们首先需要通过交会定位法确定并表示出该区域。确定该区域后我们需要给出直径的算法，而对区域内每两点求距离计算量过于庞大，因此我们将在下文中通过确认定位区域的闭凸性和有界性
+证明它是闭凸多边形，随后证明直径必然是其对角线中的一条来大大减少计算量。最后我们将多种Matlab求解方法对比，选择了更加适合该题目的向量暴力求解方法。
+
 \subsubsection{交会定位区域的建立}
 
 \begin{figure}[H]
@@ -138,6 +142,7 @@ $\text{直径}=\max_{i<j} \left\| v_i-v_j \right\| =\max_{i<j} \sqrt{\left( x_i-
 \caption{流程图}
 \label{fig:flowchart1}
 \end{figure}
+
 
 设共有 $n$ 个检测点，其坐标分别为 $S_i=(x_i,y_i)$，$i=1,2,\ldots,n$。
 对应测得的示向度为 $\theta_i\in[0^\circ,360^\circ)$。根据附录2，测向机的示向度与干扰源真实方位角之间的误差绝对值不超过 $\tau=1^\circ$。
@@ -149,24 +154,25 @@ $\left|\operatorname{wrap}(\beta_i-\theta_i)\right|\leq \tau$。
 \operatorname{wrap}(x) = x-360^\circ \left\lfloor\frac{x+180^\circ}{360^\circ}\right\rfloor .
 \]
 统一折算到 $(-180^\circ,180^\circ]$ 区间内，利用wrap函数避免角度周期性带来的误判。
+
 而对于每个检测点 $S_i$ ，干扰源一定落在以 $S_i$ 为顶点、以 $\theta_i-\tau$ 和 $\theta_i+\tau$ 为两条边界射线的角形区域内。我们把这块区域记为第 $i$ 个检测点的视界楔形
 \begin{equation}
 W_i= \left\{ P: P=S_i \ \text{或}\ \left|\operatorname{wrap} \bigl(\arg(P-S_i)-\theta_i\bigr)\right| \leq\tau \right\}.
 \end{equation}
-由于干扰源的真实位置只有一个，它必须同时落进每一个检测点的视界楔形中，因此交会定位区域实际上就是所有视界楔形的交集
+交会定位区域实际上就是所有视界楔形的交集
 \begin{equation}
 \mathcal R=\bigcap_{i=1}^n W_i.
 \end{equation}
-回到题设，真实位置 $G$ 既然满足每个检测点的测向误差约束，自然有 $G\in W_i$（$i=1,\ldots,n$），
-于是立即可以得到
+回到题设，干扰源的真实位置 $G$ 必须同时落进每一个检测点的视界楔形中，即 $G\in W_i$（$i=1,\ldots,n$），
+于是立即可以得到：
 \begin{equation}
 G\in\mathcal R.
 \end{equation}
 也就是说，$\mathcal R$ 正是干扰源位置的理论可行域。
 
-\subsubsection{视界楔形的线性化表示}
+\subsubsection{定位区域的闭凸性证明}
 
-为了便于进一步计算定位区域的几何性质，对每一个检测点建立局部正交坐标系。定义
+为了便于进一步计算定位区域的几何性质，对每一个检测点 $S_i$ 建立局部正交坐标系。定义
 \begin{equation}
 u_i=(\cos\theta_i,\sin\theta_i),\qquad v_i=(-\sin\theta_i,\cos\theta_i),
 \end{equation}
@@ -177,7 +183,7 @@ u_i=(\cos\theta_i,\sin\theta_i),\qquad v_i=(-\sin\theta_i,\cos\theta_i),
 d=\xi_i u_i+\eta_i v_i,
 \end{equation}
 其中 $\xi_i=d\cdot u_i$，$\eta_i=d\cdot v_i$。
-这里，$\xi_i$ 表示点 $P$ 沿示向度方向的纵向距离，$\eta_i$ 表示偏离示向度方向的横向距离。当 $d\neq0$ 且 $\xi_i>0$ 时，方位角和 $(\xi_i,\eta_i)$ 之间有
+这里，$\xi_i$ 表示点 $P$ 沿示向度方向的纵向距离，$\eta_i$ 表示偏离示向度方向的横向距离。当 $d\neq0$ 且 $\xi_i>0$ 时，方位角和 $(\xi_i,\eta_i)$ 之间有以下关系：
 \begin{equation}
 \arg(d)-\theta_i = \arctan\frac{\eta_i}{\xi_i}.
 \end{equation}
@@ -219,28 +225,32 @@ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdo
 \begin{equation}
 \mathcal R = \bigcap_{j=1}^{2n} \left\{ P:n_j\cdot P\leq c_j \right\}.
 \end{equation}
-由有限个闭半平面的交仍为闭凸集，故 $\mathcal R$ 是闭凸区域；当其有界时，$\mathcal R$ 即为一个凸多边形，且边界至多包含 $2n$ 条边。
+而由于有限个闭半平面的交仍为闭凸集，因此$\mathcal R$ 一定是闭凸区域。
 
 \subsubsection{定位区域有界性的判定}
 
-由于测向误差的存在，当各检测点的示向度过于接近时，多个视界楔形可能存在共同的延伸方向，使得交会定位区域向无穷远处扩张。因此，在动手算直径之前，我们得先弄明白 $\mathcal R$ 到底会不会有界。
+ $\mathcal R$ 是闭凸区域：当其有界时，$\mathcal R$ 即为一个凸多边形，且边界至多包含 $2n$ 条边。
+ 而凸多边形的直径是易求的，因此我们将讨论 $\mathcal R$ 是否有界。
 
-设非零向量 $\xi$ 是 $\mathcal R$ 的一个逃逸方向，即沿着它一直走都出不了区域：存在 $P_0\in\mathcal R$，使得 $P_0+t\xi\in\mathcal R$（$t\geq0$）。
+由于测向误差的存在，当各检测点的示向度过于接近时，多个视界楔形可能存在共同的延伸方向，使得交会定位区域向无穷远处扩张：
+
+设非零向量 $\xi$ 是 $\mathcal R$ 的一个逃逸方向，即存在 $P_0\in\mathcal R$，使得 $P_0+t\xi\in\mathcal R$（$\forall t\geq0$）。
 对于第 $i$ 个视界楔形来说，它能无限延伸的方向，恰好是那些与示向度 $\theta_i$ 夹角不超过 $\tau$ 的方向，即
 \begin{equation}
 \left| \operatorname{wrap} \left( \theta_i-\arg\xi \right) \right| \leq\tau
 \end{equation}
-换言之，$\mathcal R$ 存在非零逃逸方向，等价于存在某个方向 $\varphi$，把所有检测点的示向度都“罩住”：
+换言之，$\mathcal R$ 存在非零逃逸方向，等价于存在某个方向 $\varphi$ 能够覆盖所有检测点的示向度：
 \[
 \left| \operatorname{wrap}(\theta_i-\varphi) \right| \leq\tau, \qquad i=1,\ldots,n.
 \]
-把各个示向度看成单位圆周上的点，上述条件正好对应“它们能被一条长度为 $2\tau$ 的弧覆盖”。为定量描述，定义这些方向点的最小包围弧长度
+把各个示向度看成单位圆周上的点，上述条件正好对应“它们能被一条长度为 $2\tau$ 的弧覆盖”。
+为定量描述，定义这些方向点的最小包围弧长度为：
 \begin{equation}
 \alpha(\Theta) = 360^\circ- \max_k \left( \theta_{(k+1)}-\theta_{(k)} \right)_{360},
 \end{equation}
 其中 $\theta_{(k)}$ 为示向度升序排列后的结果，下标按圆周循环，$(\cdot)_{360}$ 表示模 $360^\circ$ 后落入 $[0^\circ,360^\circ)$ 的环间隔。
 
-这样一来，判据就很直接了：若所有示向度都能塞进某条长度为 $2\tau$ 的弧里，就存在共同逃逸方向，定位区域无界；反过来，只要最小包围弧长度超过 $2\tau$，就找不到共同逃逸方向，区域必然有界。于是得到有界性判据
+因此可知，若所有示向度都能塞进某条长度为 $2\tau$ 的弧里，就存在共同逃逸方向，定位区域无界；反之，只要最小包围弧长度超过 $2\tau$，就找不到共同逃逸方向，区域必然有界。于是得到有界性判据
 \begin{equation}
 \mathcal R\ \text{有界} \iff \alpha(\Theta)>2\tau.
 \end{equation}
@@ -252,15 +262,15 @@ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdo
 \begin{equation}
 \mathcal R\ \text{有界} \iff \Delta\theta>2\tau=2^\circ.
 \end{equation}
-也就是说，当两个检测点观测到的方向夹角不超过 $2^\circ$ 时，交会区域可能沿共同方向无限延伸，不能直接定义有限直径。遇到这种情况，就再叠加题目给出的物理范围（例如目标区域 $|P|\leq1800\ \text{m}$）或有效接收距离约束，给定位区域补上有界化条件。
+也就是说，当两个检测点观测到的方向夹角不超过 $2^\circ$ 时，交会区域可能沿共同方向无限延伸，不能直接定义有限直径。遇到这种情况，则需给定位区域补上有界化条件。
 
 \subsubsection{定位区域直径的计算}
 
-既然知道了 $\mathcal R$ 何时有界，当上述有界性条件成立时它就是紧凸多边形，直径自然有定义，即
+当上述有界性条件成立时它就是紧凸多边形，直径自然有定义，即
 \begin{equation}
 D=\operatorname{diam}\mathcal R = \max_{P,Q\in\mathcal R}|P-Q|.
 \end{equation}
-不过直接对区域上所有点对求最大距离并不好算。我们换个思路：先引入“宽度”。对任意单位向量 $\rho$，定义区域在方向 $\rho$ 上的宽度为
+然而直接对区域上所有点对求最大距离仍然十分困难。为此我们引入“宽度”。对任意单位向量 $\rho$，定义区域在方向 $\rho$ 上的宽度为
 \begin{equation}
 w(\rho) = \max_{P\in\mathcal R}\rho\cdot P - \min_{P\in\mathcal R}\rho\cdot P.
 \end{equation}
@@ -269,11 +279,11 @@ w(\rho) = \max_{P\in\mathcal R}\rho\cdot P - \min_{P\in\mathcal R}\rho\cdot P.
 \[
 w(\rho^*) \geq \rho^*\cdot(P^*-Q^*) = D.
 \]
-两边合起来，宽度与直径便恰好吻合：
+两边联立，宽度与直径便恰好吻合：
 \begin{equation}
 D=\max_{\|\rho\|=1}w(\rho).
 \end{equation}
-既然 $\mathcal R$ 是凸多边形，还可以把上面这个连续优化进一步压成有限个顶点对的比较。设 $\mathcal R$ 的顶点按逆时针方向排列为 $V_1,V_2,\ldots,V_m$。
+既然 $\mathcal R$ 是凸多边形，我们可以将其连续优化进一步压成有限个顶点对的比较。设 $\mathcal R$ 的顶点按逆时针方向排列为 $V_1,V_2,\ldots,V_m$。
 固定任意 $Q\in\mathcal R$，函数 $f(P)=|P-Q|$ 关于 $P$ 为凸函数。若 $P$ 落在某条边的内部，可将其写成该边两个端点的凸组合，于是由三角不等式，至少有一个端点到 $Q$ 的距离不小于 $P$ 到 $Q$ 的距离。这说明最大值一定能在顶点处取到。对 $Q$ 同理可得
 \begin{equation}
 D= \max_{1\leq i<j\leq m}|V_i-V_j|.
@@ -287,6 +297,23 @@ D= \max_{1\leq i<j\leq m}|V_i-V_j|.
 D=\max_{i<j}d_{ij}.
 \end{equation}
 \end{enumerate}
+
+\subsubsection{求解定位区域直径的Matlab方法}
+
+在对半平面求交得到 $\mathcal R$ 的顶点 $V_1,\ldots,V_m$（$m\leq2n$） 后，我们需要求解以下非线性规划问题：
+
+
+\begin{equation}
+\begin{aligned}
+\max_{V_i, V_j} \quad & \|V_i - V_j\|_2 \\
+\text{s.t.} \quad & \begin{cases}
+V_i \in \mathcal{R}, \\
+V_j \in \mathcal{R}, \\
+\mathcal{R} = \bigcap_{k=1}^{2n} \left\{ X : n_k \cdot X \leq c_k \right\}.
+\end{cases}
+\end{aligned}
+\end{equation}
+
 若直接枚举顶点对，直径计算的复杂度为 $O(m^2)$，再代入 $m\leq2n$，可进一步写为 $O(n^2)$。
 当顶点已按凸多边形边界顺序排列时，也可以进一步利用旋转卡壳算法将直径计算降至 $O(m)$。
 
