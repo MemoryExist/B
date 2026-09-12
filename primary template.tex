@@ -153,21 +153,27 @@ $\left|\operatorname{wrap}(\beta_i-\theta_i)\right|\leq \tau$。
 \[
 \operatorname{wrap}(x) = x-360^\circ \left\lfloor\frac{x+180^\circ}{360^\circ}\right\rfloor .
 \]
+
 统一折算到 $(-180^\circ,180^\circ]$ 区间内，利用wrap函数避免角度周期性带来的误判。
 
 而对于每个检测点 $S_i$ ，干扰源一定落在以 $S_i$ 为顶点、以 $\theta_i-\tau$ 和 $\theta_i+\tau$ 为两条边界射线的角形区域内。我们把这块区域记为第 $i$ 个检测点的视界楔形
 \begin{equation}
 W_i= \left\{ P: P=S_i \ \text{或}\ \left|\operatorname{wrap} \bigl(\arg(P-S_i)-\theta_i\bigr)\right| \leq\tau \right\}.
 \end{equation}
+
 交会定位区域实际上就是所有视界楔形的交集
+
 \begin{equation}
 \mathcal R=\bigcap_{i=1}^n W_i.
 \end{equation}
+
 回到题设，干扰源的真实位置 $G$ 必须同时落进每一个检测点的视界楔形中，即 $G\in W_i$（$i=1,\ldots,n$），
 于是立即可以得到：
+
 \begin{equation}
 G\in\mathcal R.
 \end{equation}
+
 也就是说，$\mathcal R$ 正是干扰源位置的理论可行域。
 
 \begin{figure}[H]
@@ -183,55 +189,78 @@ G\in\mathcal R.
 \begin{equation}
 u_i=(\cos\theta_i,\sin\theta_i),\qquad v_i=(-\sin\theta_i,\cos\theta_i),
 \end{equation}
+
 其中 $u_i$ 为测得方向的单位向量，$v_i$ 为其逆时针旋转 $90^\circ$ 后的单位向量。
 
 对任意待测位置 $P$，记 $d=P-S_i$ ，再把它在这组局部基下拆开，即
 \begin{equation}
 d=\xi_i u_i+\eta_i v_i,
 \end{equation}
+
 其中 $\xi_i=d\cdot u_i$，$\eta_i=d\cdot v_i$。
-这里，$\xi_i$ 表示点 $P$ 沿示向度方向的纵向距离，$\eta_i$ 表示偏离示向度方向的横向距离。当 $d\neq0$ 且 $\xi_i>0$ 时，方位角和 $(\xi_i,\eta_i)$ 之间有以下关系：
+$\xi_i$ 表示点 $P$ 沿示向度方向的纵向距离，$\eta_i$ 表示偏离示向度方向的横向距离。
+
+当 $d\neq0$ 且 $\xi_i>0$ 时，方位角和 $(\xi_i,\eta_i)$ 之间有以下关系：
+
 \begin{equation}
 \arg(d)-\theta_i = \arctan\frac{\eta_i}{\xi_i}.
 \end{equation}
+
 两边取绝对值，测向误差约束就化成了对横向与纵向距离之比的限制
+
 \begin{equation}
 \left|\arg(d)-\theta_i\right|\leq\tau \iff \left|\frac{\eta_i}{\xi_i}\right| \leq\tan\tau.
 \end{equation}
+
 再把目标一定位于检测点前方这一条件 $\xi_i\geq0$ 一并纳入，整理后可得
+
 \begin{equation}
 W_i= \left\{ S_i+\xi u_i+\eta v_i: \xi\geq0,\; |\eta|\leq\xi\tan\tau \right\}.
 \end{equation}
+
 进一步地，$|\eta_i|\leq\xi_i\tan\tau$ 等价于
+
 \[
 \eta_i\leq\xi_i\tan\tau, \qquad -\eta_i\leq\xi_i\tan\tau.
 \]
+
 由于 $\xi_i$ 和 $\eta_i$ 均为位置坐标 $P=(x,y)$ 的线性函数，因此上面这两个条件都可以直接写成半平面不等式的形式。
 
 具体地，令
 \begin{equation}
 e_i^\pm= \left( \cos(\theta_i\pm\tau), \sin(\theta_i\pm\tau) \right),
 \end{equation}
+
 则楔形两条边界射线分别为
+
 \[
 S_i+t e_i^\pm,\qquad t\geq0.
 \]
+
 这两条边界所在直线的交点，即楔顶，为
+
 \begin{equation}
 A_i = S_i+\frac{1}{\cos\tau}u_i.
 \end{equation}
+
 定义单位法向量
+
 \[
 n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
 \]
+
 则视界楔形可表示为两个半平面的交：
+
 \begin{equation}
 W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdot P\leq n_i^-\cdot A_i \right\}.
 \end{equation}
+
 因此，交会定位区域可以进一步表示为
+
 \begin{equation}
 \mathcal R = \bigcap_{j=1}^{2n} \left\{ P:n_j\cdot P\leq c_j \right\}.
 \end{equation}
+
 而由于有限个闭半平面的交仍为闭凸集，因此$\mathcal R$ 一定是闭凸区域。
 
 \subsubsection{定位区域有界性的判定}
@@ -243,6 +272,7 @@ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdo
 
 设非零向量 $\xi$ 是 $\mathcal R$ 的一个逃逸方向，即存在 $P_0\in\mathcal R$，使得 $P_0+t\xi\in\mathcal R$（$\forall t\geq0$）。
 对于第 $i$ 个视界楔形来说，它能无限延伸的方向，恰好是那些与示向度 $\theta_i$ 夹角不超过 $\tau$ 的方向，即
+
 \begin{equation}
 \left| \operatorname{wrap} \left( \theta_i-\arg\xi \right) \right| \leq\tau
 \end{equation}
@@ -250,25 +280,31 @@ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdo
 \[
 \left| \operatorname{wrap}(\theta_i-\varphi) \right| \leq\tau, \qquad i=1,\ldots,n.
 \]
+
 把各个示向度看成单位圆周上的点，上述条件正好对应“它们能被一条长度为 $2\tau$ 的弧覆盖”。
 为定量描述，定义这些方向点的最小包围弧长度为：
+
 \begin{equation}
 \alpha(\Theta) = 360^\circ- \max_k \left( \theta_{(k+1)}-\theta_{(k)} \right)_{360},
 \end{equation}
+
 其中 $\theta_{(k)}$ 为示向度升序排列后的结果，下标按圆周循环，$(\cdot)_{360}$ 表示模 $360^\circ$ 后落入 $[0^\circ,360^\circ)$ 的环间隔。
 
 因此可知，若所有示向度都能塞进某条长度为 $2\tau$ 的弧里，就存在共同逃逸方向，定位区域无界；反之，只要最小包围弧长度超过 $2\tau$，就找不到共同逃逸方向，区域必然有界。于是得到有界性判据
 \begin{equation}
 \mathcal R\ \text{有界} \iff \alpha(\Theta)>2\tau.
 \end{equation}
+
 退化到只有两个检测点的情形，先算出两示向度的最小夹角
 \begin{equation}
 \Delta\theta = \left| \operatorname{wrap}(\theta_2-\theta_1) \right| <180^\circ.
 \end{equation}
+
 此时显然有 $\alpha(\Theta)=\Delta\theta$，代入上面的判据，立刻得到
 \begin{equation}
 \mathcal R\ \text{有界} \iff \Delta\theta>2\tau=2^\circ.
 \end{equation}
+
 也就是说，当两个检测点观测到的方向夹角不超过 $2^\circ$ 时，交会区域可能沿共同方向无限延伸，不能直接定义有限直径。遇到这种情况，则需给定位区域补上有界化条件。
 
 \subsubsection{定位区域直径的计算}
@@ -277,32 +313,27 @@ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdo
 \begin{equation}
 D=\operatorname{diam}\mathcal R = \max_{P,Q\in\mathcal R}|P-Q|.
 \end{equation}
-然而直接对区域上所有点对求最大距离仍然十分困难。为此我们引入“宽度”。对任意单位向量 $\rho$，定义区域在方向 $\rho$ 上的宽度为
-\begin{equation}
-w(\rho) = \max_{P\in\mathcal R}\rho\cdot P - \min_{P\in\mathcal R}\rho\cdot P.
-\end{equation}
-对任意 $P,Q\in\mathcal R$，由柯西--施瓦茨不等式有 $\rho\cdot(P-Q) \leq |P-Q|$，故 $w(\rho)\leq D$，也就是说任何方向的宽度都不会超过直径。
-反过来，设 $P^*,Q^*$ 为一对真正实现直径的点，即 $|P^*-Q^*|=D$，只要取 $\rho^* = \dfrac{P^*-Q^*}{D}$，就有
-\[
-w(\rho^*) \geq \rho^*\cdot(P^*-Q^*) = D.
-\]
-两边联立，宽度与直径便恰好吻合：
-\begin{equation}
-D=\max_{\|\rho\|=1}w(\rho).
-\end{equation}
-既然 $\mathcal R$ 是凸多边形，我们可以将其连续优化进一步压成有限个顶点对的比较。设 $\mathcal R$ 的顶点按逆时针方向排列为 $V_1,V_2,\ldots,V_m$。
-固定任意 $Q\in\mathcal R$，函数 $f(P)=|P-Q|$ 关于 $P$ 为凸函数。若 $P$ 落在某条边的内部，可将其写成该边两个端点的凸组合，于是由三角不等式，至少有一个端点到 $Q$ 的距离不小于 $P$ 到 $Q$ 的距离。这说明最大值一定能在顶点处取到。对 $Q$ 同理可得
+
+然而直接对区域上所有点对求最大距离仍然十分困难。但我们可以根据 $\mathcal R$ 是凸多边形，
+将其连续优化进一步压成有限个顶点对的比较。
+
+设 $\mathcal R$ 的顶点按逆时针方向排列为 $V_1,V_2,\ldots,V_m$。
+固定任意 $Q\in\mathcal R$，函数 $f(P)=|P-Q|$ 关于 $P$ 为凸函数。
+若 $P$ 落在某条边的内部，可将其写成该边两个端点的凸组合，于是由三角不等式，
+至少有一个端点到 $Q$ 的距离不小于 $P$ 到 $Q$ 的距离。这说明最大值一定能在顶点处取到，即：
+
 \begin{equation}
 D= \max_{1\leq i<j\leq m}|V_i-V_j|.
 \end{equation}
+
 于是，问题一中定位区域直径的计算可以归纳为以下步骤：
 \begin{enumerate}
 \item 根据每个检测点的坐标 $S_i$、示向度 $\theta_i$ 和误差界 $\tau$，建立两个半平面约束，共得到至多 $2n$ 个半平面；
 \item 对这些半平面进行求交，获得定位区域 $\mathcal R$ 的顶点 $V_1,\ldots,V_m$（$m\leq2n$）；
 \item 枚举任意两个顶点，计算 $d_{ij}=|V_i-V_j|$，取最大值作为定位区域直径
-\begin{equation}
+\begin{equation*}
 D=\max_{i<j}d_{ij}.
-\end{equation}
+\end{equation*}
 \end{enumerate}
 
 \subsubsection{Matlab求解方法}
@@ -321,59 +352,61 @@ n_k \cdot X \leq c_k \text{ 为半平面的函数表达式}.
 \end{equation}
 
 若直接枚举顶点对，直径计算的复杂度为 $O(m^2)$，再代入 $m\leq2n$，可进一步写为 $O(n^2)$。
-当顶点已按凸多边形边界顺序排列时，也可以进一步利用旋转卡壳算法将直径计算降至 $O(m)$，而考虑到
-问题中检测点数量一般较少，因此我们真正需要的是可以快速求解大数量但边数较少的闭凸多边形直径的算法；
-旋转卡壳算法适用于检测点数量较少，但边数较多的闭凸多边形直径的计算，虽然降低了复杂度但速度并没有提升太多
+当顶点已按凸多边形边界顺序排列时，也可以进一步利用旋转卡壳算法将直径计算降至 $O(m)$。
+
+但考虑到问题中检测点数量一般较少，因此我们真正需要的是可以快速求解大数量但边数较少的闭凸多边形直径的算法；
+而旋转卡壳算法适用于检测点数量较少，但边数较多的闭凸多边形直径的计算，虽然降低了复杂度但速度并没有提升太多
 且其代码容易出错，经综合考量后我们决定采用代码更为稳定，适用于求解大数量数据的向量化求解算法。
-
-
 
 \subsubsection{以定位区域直径为直径的圆能否覆盖定位区域}
 
 问题一的第二部分要回答的是：以定位区域直径 $D$ 为直径的圆，是否一定能把整个定位区域罩住？
 
 为此先引入集合 $K$ 的最小覆盖圆半径
+
 \begin{equation}
 R_{\mathrm{MEC}}(K) = \min_C\max_{P\in K}|C-P|.
 \end{equation}
+
 它衡量的是“用圆罩住 $K$ 所需的最小代价”。注意到区域直径为 $D$，就意味着存在一对点 $A,B\in K$ 满足 $|A-B|=D$。
 现在任取一个能覆盖 $K$ 的圆，设圆心为 $C$、半径为 $R$，由三角不等式直接得到
+
 \begin{equation}
 D = |A-B| \leq |A-C|+|C-B| \leq2R.
 \end{equation}
+
 也就是说，任何覆盖圆的半径都逃不过 $D/2$ 这个下界，故
+
 \begin{equation}
 R_{\mathrm{MEC}}(K)\geq\frac D2.
 \end{equation}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.3\linewidth]{反例图.png}
+\caption{等边三角形反例图}
+\label{fig:p1_counterexample}
+\end{figure}
+
 但这里要特别注意，上式一般不能取等号，也就不能保证存在一个直径恰好为 $D$ 的圆罩住整个区域。为了说明这一点，可以取边长为 $D$ 的等边三角形作为反例：它的直径确实是 $\operatorname{diam}K=D$，可它的最小覆盖圆是外接圆，半径
+
 \[
 R_{\mathrm{MEC}}(K)=\frac D{\sqrt3}.
 \]
-于是 $2R_{\mathrm{MEC}}(K) = \dfrac{2}{\sqrt3}D >D$。这恰好说明：
-\begin{equation}
-\text{以定位区域直径 }D\text{ 为直径的圆一般不能覆盖整个定位区域。}
-\end{equation}
-再进一步，由平面上的 Jung 定理，任意直径为 $D$ 的有界集合都满足
+
+
+于是 $2R_{\mathrm{MEC}}(K) = \dfrac{2}{\sqrt3}D >D$。这恰好说明：以定位区域直径 $D$ 为直径的圆一般不能覆盖整个定位区域。
+
+再进一步，由平面上的 Jung 定理，任意直径为 $D$ 的有界集合都满足：
+
 \begin{equation}
 \frac D2 \leq R_{\mathrm{MEC}}(K) \leq \frac D{\sqrt3},
 \end{equation}
-把这个夹逼关系两端同乘以 $2$，就得到
-\begin{equation}
-D \leq 2R_{\mathrm{MEC}}(K) \leq \frac{2}{\sqrt3}D.
-\end{equation}
-其中等边三角形达到上界。因此，如果需要构造能够保证覆盖整个定位区域的圆形搜索域，其严格的尺度应采用最小覆盖圆直径 $2R_{\mathrm{MEC}}$，而不能简单地将定位区域直径 $D$ 直接作为圆的直径。
 
-\subsubsection{问题一求解流程总结}
+其中等边三角形达到上界。因此，如果需要构造能够保证覆盖整个定位区域的圆形搜索域，
+其严格的尺度应采用最小覆盖圆直径 $2R_{\mathrm{MEC}}$，而不能简单地将定位区域直径 $D$ 
+直接作为圆的直径。
 
-综合上述分析，问题一的求解流程可以形象地串成一条链：
-\begin{equation}
-\text{测向误差模型} \rightarrow \text{视界楔形} \rightarrow \text{半平面表示} \rightarrow \text{凸定位区域} \rightarrow \text{有界性判定} \rightarrow \text{半平面求交} \rightarrow \text{顶点集合} \rightarrow \text{顶点对最大距离}.
-\end{equation}
-具体而言，首先根据测向机的 $\pm1^\circ$ 测向误差建立各检测点的视界楔形；随后将楔形转换为两个半平面约束，从而得到凸定位区域；再通过示向度最小包围弧判断定位区域是否有界；当定位区域为有界凸多边形时，利用半平面求交得到其全部顶点，并由凸集上的极值性质得到区域直径
-\begin{equation}
-D=\max_{i<j}|V_i-V_j|.
-\end{equation}
-最后，通过最小覆盖圆理论可知，直径为 $D$ 的圆一般不能保证覆盖定位区域，因此实际搜索时应采用最小覆盖圆或其他能够保证覆盖的搜索域尺度。
 \subsection{问题二：第二检测点的选择}
 % 以下由队友的新版 problem2_section 合入；数值与图片来自 MATLAB main_problem2 的导出。
 % 依赖 amsmath, amssymb, graphicx, booktabs, float。
