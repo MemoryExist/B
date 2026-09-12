@@ -1,0 +1,343 @@
+\subsection{向量化暴力法的原理}
+
+在前述几何建模中，第 $i$ 个检测点对应的视界楔形记为 $W_i$。其楔顶统一记为 $A_i$，即
+
+\begin{equation}
+A_i = S_i+\frac{1}{\cos\tau}u_i,
+\end{equation}
+
+其中
+
+\begin{equation}
+u_i=(\cos\theta_i,\sin\theta_i),
+\qquad
+v_i=(-\sin\theta_i,\cos\theta_i).
+\end{equation}
+
+与两条边界对应的单位法向量统一记为
+
+\begin{equation}
+n_i^\pm =
+\left(
+\sin(\theta_i\mp\tau),
+-\cos(\theta_i\mp\tau)
+\right).
+\end{equation}
+
+因此，第 $i$ 个视界楔形可写成两个半平面的交：
+
+\begin{equation}
+W_i=
+\left\{
+P:
+n_i^+\cdot P\leq n_i^+\cdot A_i
+\right\}
+\cap
+\left\{
+P:
+n_i^-\cdot P\leq n_i^-\cdot A_i
+\right\}.
+\end{equation}
+
+所有检测点共同形成的交会定位区域记为
+
+\begin{equation}
+\mathcal R=\bigcap_{i=1}^{n}W_i.
+\end{equation}
+
+当 $\mathcal R$ 有界时，它是一个凸多边形。设其顶点按边界顺序排列为
+
+$$
+V_1,V_2,\ldots,V_m,
+\qquad
+m\leq2n.
+$$
+
+\subsubsection{单个多边形：顶点对最大距离}
+
+对于有界凸多边形 $\mathcal R$，其直径定义为区域内任意两点之间的最大距离：
+
+\begin{equation}
+D = \operatorname{diam}\mathcal R =
+\max_{P,Q\in\mathcal R}|P-Q|.
+\end{equation}
+
+由于 $\mathcal R$ 为凸多边形，最大距离可以在两个顶点之间取得，因此
+
+\begin{equation}
+D =
+\max_{1\leq i<j\leq m}
+|V_i-V_j|.
+\end{equation}
+
+若将第 $i$ 个顶点记为
+
+$$
+V_i=(x_i,y_i),
+$$
+
+则有
+
+\begin{equation}
+D =
+\max_{1\leq i<j\leq m}
+\sqrt{
+(x_i-x_j)^2+(y_i-y_j)^2
+}.
+\end{equation}
+
+为了避免使用双层循环，可以将所有顶点两两之间的坐标差一次性写成矩阵。设顶点矩阵
+
+\begin{equation}
+H=
+\begin{bmatrix}
+x_1 & y_1\\
+x_2 & y_2\\
+\vdots & \vdots\\
+x_m & y_m
+\end{bmatrix}
+\in\mathbb R^{m\times2}.
+\end{equation}
+
+定义
+
+\begin{equation}
+\Delta x_{ij}=x_i-x_j,
+\qquad
+\Delta y_{ij}=y_i-y_j.
+\end{equation}
+
+在 MATLAB 中利用隐式扩展，可以直接写成
+
+\begin{equation}
+\Delta x = H(:,1)-H(:,1)^{\top},
+\qquad
+\Delta y = H(:,2)-H(:,2)^{\top}.
+\end{equation}
+
+于是得到两个 $m\times m$ 矩阵，其中
+
+\begin{equation}
+\Delta x(i,j)=x_i-x_j,
+\qquad
+\Delta y(i,j)=y_i-y_j.
+\end{equation}
+
+进一步得到所有顶点对的距离矩阵
+
+\begin{equation}
+\Delta d_{ij} =
+\sqrt{
+\Delta x_{ij}^{2}
++
+\Delta y_{ij}^{2}
+}.
+\end{equation}
+
+因此，数学上的直径仍定义为
+
+\begin{equation}
+D =
+\max_{1\leq i<j\leq m}\Delta d_{ij}.
+\end{equation}
+
+在 MATLAB 的向量化实现中，可以直接对全部 $i,j$ 取最大值：
+
+\begin{equation}
+D =
+\max_{1\leq i,j\leq m}\Delta d_{ij}.
+\end{equation}
+
+这里两种写法所得结果完全相同，因为 $i=j$ 时 $\Delta d_{ij}=0$，而且
+
+$$
+\Delta d_{ij}=\Delta d_{ji}.
+$$
+
+因此，向量化计算虽然同时包含了重复顶点对和对角元素，但不会改变最大距离的结果。
+
+由于本题中顶点数满足 $m\leq2n$，且实际情况下 $m$ 较小，直接进行 $O(m^2)$ 的顶点对比较即可满足计算要求，无需为单个多边形额外采用旋转卡壳算法。
+
+\subsubsection{很多多边形：利用三维广播同时计算}
+
+设需要同时计算 $P$ 个定位多边形，第 $p$ 个多边形的顶点记为
+
+$$
+V_1^{(p)},V_2^{(p)},\ldots,V_m^{(p)}.
+$$
+
+其中第 $p$ 个多边形的直径定义为
+
+\begin{equation}
+D^{(p)} =
+\max_{1\leq i<j\leq m}
+|V_i^{(p)}-V_j^{(p)}|.
+\end{equation}
+
+设
+
+$$
+V_i^{(p)}
+=
+\left(
+x_i^{(p)},
+y_i^{(p)}
+\right),
+$$
+
+则有
+
+\begin{equation}
+D^{(p)} =
+\max_{1\leq i<j\leq m}
+\sqrt{
+\left(x_i^{(p)}-x_j^{(p)}\right)^2
++
+\left(y_i^{(p)}-y_j^{(p)}\right)^2
+}.
+\end{equation}
+
+各个多边形之间相互独立，且计算结果完全相同。因此，可以将所有多边形的顶点堆叠为三维数组
+
+\begin{equation}
+\mathbf X\in\mathbb R^{m\times2\times P},
+\end{equation}
+
+其中
+
+\begin{equation}
+\mathbf X(i,1,p)=x_i^{(p)},
+\qquad
+\mathbf X(i,2,p)=y_i^{(p)}.
+\end{equation}
+
+这样，第 $p$ 个二维切片 $\mathbf X(:,:,p)$ 就对应第 $p$ 个定位多边形的全部顶点坐标。
+
+对于所有 $i,j,p$ 的 $x$ 坐标差，可以利用 MATLAB 的三维隐式扩展一次完成：
+
+\begin{equation}
+\Delta\mathbf x =
+\mathbf X(:,1,:) -
+\operatorname{permute}
+\left(
+\mathbf X(:,1,:),
+[2\ 1\ 3]
+\right).
+\end{equation}
+
+其中
+
+$$
+\mathbf X(:,1,:)\in\mathbb R^{m\times1\times P},
+$$
+
+而
+
+$$
+\operatorname{permute}
+\left(
+\mathbf X(:,1,:),
+[2\ 1\ 3]
+\right)
+\in\mathbb R^{1\times m\times P}.
+$$
+
+二者利用隐式扩展相减后，得到
+
+$$
+\Delta\mathbf x\in\mathbb R^{m\times m\times P},
+$$
+
+且
+
+\begin{equation}
+\Delta\mathbf x(i,j,p)
+=
+x_i^{(p)}-x_j^{(p)}.
+\end{equation}
+
+同理，对 $y$ 坐标有
+
+\begin{equation}
+\Delta\mathbf y =
+\mathbf X(:,2,:) -
+\operatorname{permute}
+\left(
+\mathbf X(:,2,:),
+[2\ 1\ 3]
+\right),
+\end{equation}
+
+从而
+
+\begin{equation}
+\Delta\mathbf y(i,j,p)
+=
+y_i^{(p)}-y_j^{(p)}.
+\end{equation}
+
+于是一次性得到所有多边形中全部顶点对的距离：
+
+\begin{equation}
+\Delta\mathbf d(i,j,p)
+=
+\sqrt{
+\Delta\mathbf x(i,j,p)^2
++
+\Delta\mathbf y(i,j,p)^2
+}.
+\end{equation}
+
+对于每一个固定的 $p$，其直径仍然严格定义为
+
+\begin{equation}
+D^{(p)} =
+\max_{1\leq i<j\leq m}
+\Delta\mathbf d(i,j,p).
+\end{equation}
+
+在 MATLAB 实现中，为了充分利用三维数组运算，可以直接沿前两维取最大值：
+
+\begin{equation}
+D^{(p)} =
+\max_{1\leq i,j\leq m}
+\Delta\mathbf d(i,j,p).
+\end{equation}
+
+同样，由于 $\Delta\mathbf d(i,i,p)=0$ 且
+
+$$
+\Delta\mathbf d(i,j,p)
+=
+\Delta\mathbf d(j,i,p),
+$$
+
+使用全部 $i,j$ 进行最大值运算与严格的 $i<j$ 定义得到完全相同的直径。
+
+因此，整个 $P$ 个多边形的直径可以通过一次三维广播和一次沿前两维的最大值运算同时得到，无需逐个多边形编写循环。
+
+\subsubsection{向量化方法的核心优势}
+
+该方法的核心思想是：将原本
+
+$$
+\text{“对每一个多边形分别计算所有顶点对距离”}
+$$
+
+转化为
+
+$$
+\text{“把多边形编号 }p\text{ 作为第三维，一次进行三维矩阵运算”}.
+$$
+
+对于单个多边形，计算复杂度为
+
+\begin{equation}
+O(m^2),
+\end{equation}
+
+而本题中 $m\leq2n$ 且顶点数量较少，因此 $m^2$ 次运算的开销较小。
+
+当需要同时计算大量结构相同的多边形时，可以利用三维广播将这些独立计算统一交给 MATLAB 底层完成，从而避免显式的逐多边形循环。
+
+因此，对于本题这种“多边形数量较多、但每个多边形顶点数量较少”的情形，采用“顶点对最大距离 + 三维广播”的向量化暴力方法能够在保持实现简单的同时获得较好的计算效率。
