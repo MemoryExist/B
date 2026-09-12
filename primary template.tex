@@ -1,4 +1,6 @@
-﻿%!TEX program = xelatex
+﻿% !TEX root = primary template.tex
+%!TEX program = xelatex
+
 % 1. 文档类必须放在最顶端（最第一行）
 \documentclass[withoutpreface,bwprint]{cumcmthesis} % 已加选项，隐藏承诺书和编号页
 
@@ -6,7 +8,7 @@
 % 注意：cumcmthesis.cls 已自动加载 ctex、amsmath、amssymb、amsthm 的等价内容、
 % url、subcaption、float、cleveref 等宏包，切勿重复加载（会导致报错）。
 \usepackage[framemethod=TikZ]{mdframed}
-
+\usepackage[table]{xcolor}
 % 问题一推导中使用的数学记号
 % 注意：theorem/lemma/corollary/definition/proof 等定理环境已由
 % cumcmthesis.cls 用中文名定义好，切勿再用 \newtheorem 重复定义，
@@ -97,14 +99,46 @@ $R_{\MEC}$ & 最小覆盖圆半径 & m \\
 \end{tabular}
 \end{table}
 \section{问题分析}
-\subsection{问题一分析}
-首先规定相交区域，
-其次证明它是闭凸多边形，
-接着关于其有界性证明，
-最后证明距离的最大值在对角处取到。
+\subsection{问题1分析}
+%首先规定相交区域，
+%其次证明它是闭凸多边形，
+%接着关于其有界性证明，
+%最后证明距离的最大值在对角处取到。
+
+
+%我们的基本思路是从单个检测点出发，逐步分析多个检测点共同作用下的定位区域。
+首先，根据测向机存在一定测量误差这一条件，规定每个检测点对应的可能区域，即以检测点为顶点、测量方向为中心的一定角度范围内的区域。将所有检测点对应的区域取交集，就得到干扰源可能存在的共同区域。
+其次，为了研究这个区域的几何性质，我们将上述角度限制转化为直线和半平面约束，从而证明多个检测点形成的相交区域是一个闭的凸区域；在区域有界的情况下，它进一步表现为一个闭凸多边形。这样就可以把原本较复杂的定位问题转化为比较直观的平面几何问题。
+接着，我们进一步讨论这个定位区域是否一定是有限的。通过分析各个检测点测得方向之间的关系，判断它们是否存在共同的延伸方向，从而确定定位区域是否有界。
+最后，在定位区域有界的情况下，考虑区域内两点之间的最大距离。
+$\text{直径}=\max_{i<j} \left\| v_i-v_j \right\| =\max_{i<j} \sqrt{\left( x_i-x_j \right) ^2+\left( y_i-y_j \right) ^2}$
+顶点数小于或等于2n，最终可以写为非线性规划的形式。
+运用MATLAB有两种方法：一种是旋转卡壳法，可以将 $O(m^2)$转化为$O(n)$，
+还有一种是向量化暴力求解，适用于大数量多边形、少量顶点的情况，比普通的遍历算法更优。
+% 放在 \section{问题分析} 的 \subsection{问题一分析} 之后
+
+首先规定相交区域，其次证明它是闭凸多边形，
+接着关于其有界性证明，最后证明距离的最大值在对角处取到。
+\subsection{问题2分析}
+问题二主要研究在首次测向结果已知的情况下，如何选择第二个检测点，使后续定位尽可能准确，同时兼顾检测点的移动距离。
+首先，根据第一检测点的测向误差和有效接收距离，确定干扰源可能存在的区域，并进一步反推出第二检测点的候选范围，保证第二站能够接收到信号。
+其次，以第二检测点对定位精度的改善程度作为主要评价指标，引入最小包围圆半径，衡量不同位置下最坏情况下的定位误差，同时将移动距离作为次要优化目标。
+然后，为降低计算量，采用“两阶段搜索”策略：第一阶段利用测向误差的线性化模型进行快速粗筛，并结合理论下界排除明显较差的候选点；第二阶段对保留下来的候选点建立真实几何定位区域，通过多边形求交和最小包围圆进行精确评价。
+最后，在保证定位精度基本最优的条件下，选择移动距离较短的检测点作为最终方案。
+\subsection{问题3分析}
+
+\subsection{问题4分析}
 \section{模型的建立与求解}
-\subsection{问题一：交会定位区域及其直径的数学模型与求解}
+\subsection{问题1：交会定位区域及其直径的数学模型与求解}
 \subsubsection{交会定位区域的建立}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{flowchart_1.png}
+\caption{流程图}
+\label{fig:flowchart1}
+\end{figure}
+
 设共有 $n$ 个检测点，其坐标分别为 $S_i=(x_i,y_i)$，$i=1,2,\ldots,n$。
 对应测得的示向度为 $\theta_i\in[0^\circ,360^\circ)$。根据附录2，测向机的示向度与干扰源真实方位角之间的误差绝对值不超过 $\tau=1^\circ$。
 设干扰源真实位置为 $G$，则在第 $i$ 个检测点处，其真实方位角 $\beta_i=\arg(G-S_i)$
@@ -122,12 +156,12 @@ W_i= \left\{ P: P=S_i \ \text{或}\ \left|\operatorname{wrap} \bigl(\arg(P-S_i)-
 \end{equation}
 由于干扰源的真实位置只有一个，它必须同时落进每一个检测点开出的这块“视野”里，把两者取交集，就得到交会定位区域
 \begin{equation}
-\boxed{ \mathcal R=\bigcap_{i=1}^n W_i }.
+\mathcal R=\bigcap_{i=1}^n W_i.
 \end{equation}
 回到题设，真实位置 $G$ 既然满足每个检测点的测向误差约束，自然有 $G\in W_i$（$i=1,\ldots,n$），
 于是立即可以得到
 \begin{equation}
-\boxed{ G\in\mathcal R }.
+G\in\mathcal R.
 \end{equation}
 也就是说，$\mathcal R$ 正是干扰源位置的理论可行域。
 
@@ -154,7 +188,7 @@ d=\xi_i u_i+\eta_i v_i,
 \end{equation}
 再把目标一定位于检测点前方这一条件 $\xi_i\geq0$ 一并纳入，整理后可得
 \begin{equation}
-\boxed{ W_i= \left\{ S_i+\xi u_i+\eta v_i: \xi\geq0,\; |\eta|\leq\xi\tan\tau \right\}. }
+W_i= \left\{ S_i+\xi u_i+\eta v_i: \xi\geq0,\; |\eta|\leq\xi\tan\tau \right\}.
 \end{equation}
 进一步地，$|\eta_i|\leq\xi_i\tan\tau$ 等价于
 \[
@@ -180,11 +214,11 @@ n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
 \]
 则视界楔形可表示为两个半平面的交：
 \begin{equation}
-\boxed{ W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdot P\leq n_i^-\cdot A_i \right\}. }
+W_i= \left\{ P:n_i^+\cdot P\leq n_i^+\cdot A_i \right\} \cap \left\{ P:n_i^-\cdot P\leq n_i^-\cdot A_i \right\}.
 \end{equation}
 因此，交会定位区域可以进一步表示为
 \begin{equation}
-\boxed{ \mathcal R = \bigcap_{j=1}^{2n} \left\{ P:n_j\cdot P\leq c_j \right\}. }
+\mathcal R = \bigcap_{j=1}^{2n} \left\{ P:n_j\cdot P\leq c_j \right\}.
 \end{equation}
 由有限个闭半平面的交仍为闭凸集，故 $\mathcal R$ 是闭凸区域；当其有界时，$\mathcal R$ 即为一个凸多边形，且边界至多包含 $2n$ 条边。
 
@@ -197,7 +231,7 @@ n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
 \begin{equation}
 \left| \operatorname{wrap} \left( \theta_i-\arg\xi \right) \right| \leq\tau
 \end{equation}
-换言之，$\mathcal R$ 存在非零逃逸方向，等价于**存在**某个方向 $\varphi$，把所有检测点的示向度都“罩住”：
+换言之，$\mathcal R$ 存在非零逃逸方向，等价于存在某个方向 $\varphi$，把所有检测点的示向度都“罩住”：
 \[
 \left| \operatorname{wrap}(\theta_i-\varphi) \right| \leq\tau, \qquad i=1,\ldots,n.
 \]
@@ -209,7 +243,7 @@ n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
 
 这样一来，判据就很直接了：若所有示向度都能塞进某条长度为 $2\tau$ 的弧里，就存在共同逃逸方向，定位区域无界；反过来，只要最小包围弧长度超过 $2\tau$，就找不到共同逃逸方向，区域必然有界。于是得到有界性判据
 \begin{equation}
-\boxed{ \mathcal R\ \text{有界} \iff \alpha(\Theta)>2\tau. }
+\mathcal R\ \text{有界} \iff \alpha(\Theta)>2\tau.
 \end{equation}
 退化到只有两个检测点的情形，先算出两示向度的最小夹角
 \begin{equation}
@@ -217,7 +251,7 @@ n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
 \end{equation}
 此时显然有 $\alpha(\Theta)=\Delta\theta$，代入上面的判据，立刻得到
 \begin{equation}
-\boxed{ \mathcal R\ \text{有界} \iff \Delta\theta>2\tau=2^\circ. }
+\mathcal R\ \text{有界} \iff \Delta\theta>2\tau=2^\circ.
 \end{equation}
 也就是说，当两个检测点观测到的方向夹角不超过 $2^\circ$ 时，交会区域可能沿共同方向无限延伸，不能直接定义有限直径。遇到这种情况，就再叠加题目给出的物理范围（例如目标区域 $|P|\leq1800\ \text{m}$）或有效接收距离约束，给定位区域补上有界化条件。
 
@@ -225,7 +259,7 @@ n_i^\pm = \left( \sin(\theta_i\mp\tau), -\cos(\theta_i\mp\tau) \right),
 
 既然知道了 $\mathcal R$ 何时有界，当上述有界性条件成立时它就是紧凸多边形，直径自然有定义，即
 \begin{equation}
-\boxed{ D=\operatorname{diam}\mathcal R = \max_{P,Q\in\mathcal R}|P-Q|. }
+D=\operatorname{diam}\mathcal R = \max_{P,Q\in\mathcal R}|P-Q|.
 \end{equation}
 不过直接对区域上所有点对求最大距离并不好算。我们换个思路：先引入“宽度”。对任意单位向量 $\rho$，定义区域在方向 $\rho$ 上的宽度为
 \begin{equation}
@@ -238,12 +272,12 @@ w(\rho^*) \geq \rho^*\cdot(P^*-Q^*) = D.
 \]
 两边合起来，宽度与直径便恰好吻合：
 \begin{equation}
-\boxed{ D=\max_{\|\rho\|=1}w(\rho). }
+D=\max_{\|\rho\|=1}w(\rho).
 \end{equation}
 既然 $\mathcal R$ 是凸多边形，还可以把上面这个连续优化进一步压成有限个顶点对的比较。设 $\mathcal R$ 的顶点按逆时针方向排列为 $V_1,V_2,\ldots,V_m$。
 固定任意 $Q\in\mathcal R$，函数 $f(P)=|P-Q|$ 关于 $P$ 为凸函数。若 $P$ 落在某条边的内部，可将其写成该边两个端点的凸组合，于是由三角不等式，至少有一个端点到 $Q$ 的距离不小于 $P$ 到 $Q$ 的距离。这说明最大值一定能在顶点处取到。对 $Q$ 同理可得
 \begin{equation}
-\boxed{ D= \max_{1\leq i<j\leq m}|V_i-V_j|. }
+D= \max_{1\leq i<j\leq m}|V_i-V_j|.
 \end{equation}
 于是，问题一中定位区域直径的计算可以归纳为以下步骤：
 \begin{enumerate}
@@ -272,7 +306,7 @@ D = |A-B| \leq |A-C|+|C-B| \leq2R.
 \end{equation}
 也就是说，任何覆盖圆的半径都逃不过 $D/2$ 这个下界，故
 \begin{equation}
-\boxed{ R_{\mathrm{MEC}}(K)\geq\frac D2. }
+R_{\mathrm{MEC}}(K)\geq\frac D2.
 \end{equation}
 但这里要特别注意，上式一般不能取等号，也就不能保证存在一个直径恰好为 $D$ 的圆罩住整个区域。为了说明这一点，可以取边长为 $D$ 的等边三角形作为反例：它的直径确实是 $\operatorname{diam}K=D$，可它的最小覆盖圆是外接圆，半径
 \[
@@ -280,7 +314,7 @@ R_{\mathrm{MEC}}(K)=\frac D{\sqrt3}.
 \]
 于是 $2R_{\mathrm{MEC}}(K) = \dfrac{2}{\sqrt3}D >D$。这恰好说明：
 \begin{equation}
-\boxed{ \text{以定位区域直径 }D\text{ 为直径的圆一般不能覆盖整个定位区域。} }
+\text{以定位区域直径 }D\text{ 为直径的圆一般不能覆盖整个定位区域。}
 \end{equation}
 再进一步，由平面上的 Jung 定理，任意直径为 $D$ 的有界集合都满足
 \begin{equation}
@@ -288,7 +322,7 @@ R_{\mathrm{MEC}}(K)=\frac D{\sqrt3}.
 \end{equation}
 把这个夹逼关系两端同乘以 $2$，就得到
 \begin{equation}
-\boxed{ D \leq 2R_{\mathrm{MEC}}(K) \leq \frac{2}{\sqrt3}D. }
+D \leq 2R_{\mathrm{MEC}}(K) \leq \frac{2}{\sqrt3}D.
 \end{equation}
 其中等边三角形达到上界。因此，如果需要构造能够保证覆盖整个定位区域的圆形搜索域，其严格的尺度应采用最小覆盖圆直径 $2R_{\mathrm{MEC}}$，而不能简单地将定位区域直径 $D$ 直接作为圆的直径。
 
@@ -296,15 +330,16 @@ R_{\mathrm{MEC}}(K)=\frac D{\sqrt3}.
 
 综合上述分析，问题一的求解流程可以形象地串成一条链：
 \begin{equation}
-\boxed{ \text{测向误差模型} \rightarrow \text{视界楔形} \rightarrow \text{半平面表示} \rightarrow \text{凸定位区域} \rightarrow \text{有界性判定} \rightarrow \text{半平面求交} \rightarrow \text{顶点集合} \rightarrow \text{顶点对最大距离} }.
+\text{测向误差模型} \rightarrow \text{视界楔形} \rightarrow \text{半平面表示} \rightarrow \text{凸定位区域} \rightarrow \text{有界性判定} \rightarrow \text{半平面求交} \rightarrow \text{顶点集合} \rightarrow \text{顶点对最大距离}.
 \end{equation}
 具体而言，首先根据测向机的 $\pm1^\circ$ 测向误差建立各检测点的视界楔形；随后将楔形转换为两个半平面约束，从而得到凸定位区域；再通过示向度最小包围弧判断定位区域是否有界；当定位区域为有界凸多边形时，利用半平面求交得到其全部顶点，并由凸集上的极值性质得到区域直径
 \begin{equation}
-\boxed{ D=\max_{i<j}|V_i-V_j|. }
+D=\max_{i<j}|V_i-V_j|.
 \end{equation}
 最后，通过最小覆盖圆理论可知，直径为 $D$ 的圆一般不能保证覆盖定位区域，因此实际搜索时应采用最小覆盖圆或其他能够保证覆盖的搜索域尺度。
 \subsection{问题二：第二检测点的选择}
-% 以下由队友的 problem2_section.tex 合入；数值与图片来自 MATLAB main_problem2 的导出。
+% 以下由队友的新版 problem2_section 合入；数值与图片来自 MATLAB main_problem2 的导出。
+% 依赖 amsmath, amssymb, graphicx, booktabs, float。
 % 资源路径自动判断：独立编译时 results/ 就在当前目录；合入总论文时位于子目录。
 \providecommand{\qtwopath}{}
 \IfFileExists{results/problem2_numbers.tex}{}{%
@@ -394,34 +429,37 @@ f_1(P)\ge r_*>20,\qquad P\in E.
 这给出不可行性的下界证明，并不表示最优半径能达到 $r_*$。
 若目标圆域裁掉了上述内切圆盘，则不再使用此证明。
 
-\subsubsection{近似排序与有依据的淘汰}
+\subsubsection{第一阶段打分（粗筛）：极速线性化近似与端点极值推导}
 
-直接对整个 $E$ 做高精度扫描开销较大。先构造低成本指标，对候选点排序。
+直接对整个候选区域 $E$ 做高精度几何求交开销极大。因此，我们首先构造一个低成本的极速打分指标，对所有候选点进行近似排序。
+
 在首条中心射线取参考源 $G=(r,0)$，对测向方程作一阶线性化，
 得到位置误差平行四边形
 \begin{equation}
 |\Delta v|\le r\delta,\qquad
 |y\Delta u+(r-x)\Delta v|\le\bigl((r-x)^2+y^2\bigr)\delta .
 \end{equation}
-其包围半径为
+其包围半径（即粗筛阶段的评分公式）为：
 \begin{equation}
 \widehat\rho(r;P)=\delta
 \sqrt{r^2+\frac{\left((r-x)^2+y^2+r|r-x|\right)^2}{y^2}},
 \qquad y\ne0.
 \label{eq:q2surrogate}
 \end{equation}
-这个近似模型中，径向最坏值确实在端点取得。具体地，令
+\textbf{端点极值的严格数学推导：} 我们发现该近似模型中，径向最坏误差必然在区间的两端（$r=5$ 或 $r=1500$）取得。具体推导如下：令
 \[
 H(r)=(r-x)^2+y^2+r|r-x|
 =\max\{x^2+y^2-xr,\ 2r^2-3xr+x^2+y^2\},\quad r\ge0.
 \]
-$H$ 非负且凸。由欧氏范数在非负象限上的单调性及三角不等式，
-$\widehat\rho(r;P)=\delta\|(r,H(r)/|y|)\|_2$ 也是凸函数，故可取
+首先，函数 $f_1(r) = x^2+y^2-xr$ 是关于 $r$ 的线性函数，因而是凸函数；$f_2(r) = 2r^2-3xr+x^2+y^2$ 是关于 $r$ 的二次函数，其二阶导数为 $4 > 0$，因而是严格凸函数。由于两个凸函数的逐点最大值仍然是凸函数，所以 $H(r) = \max\{f_1(r), f_2(r)\}$ 必定是非负的凸函数。
+其次，对于给定的候选点 $P(x,y)$，打分公式可写为二维向量的欧几里得范数：$\widehat\rho(r;P)=\delta \left\| \left( r, \frac{H(r)}{|y|} \right) \right\|_2$。
+由欧氏范数在非负象限上的单调性，以及 $r \mapsto r$（线性）和 $r \mapsto H(r)/|y|$（凸且非负）的凸性组合可知，复合函数 $\widehat\rho(r;P)$ 严格保持了关于 $r$ 的凸性。
+根据凸优化理论的基本定理：\textbf{凸函数在闭区间 $[5, 1500]$ 上的最大值必然在区间的边界端点处取得}。因此，我们严密推导出第一阶段候选点 $P$ 的最终打分为：
 \begin{equation}
 \widehat f_1(P)=\max\{\widehat\rho(5;P),\widehat\rho(1500;P)\}.
 \end{equation}
-这一端点结论适用于线性化指标，不能推广为真实 $f_1$ 的端点定理。
-因此 $\widehat f_1$ 只用于排序；$y=0$ 的奇异点交给真实区域模型评价。
+这一端点定理极大地减少了搜索空间。但请注意，该结论仅适用于线性化指标，不适用于第二阶段真实的 $f_1$ 几何区域模型。
+因此 $\widehat f_1$ 仅用于第一阶段极速打分排序；$y=0$ 的奇异点则直接交由第二阶段的真实区域模型评价。
 
 另从 $D$ 中取有限个见证点 $G_i$。
 若两点距 $P$ 均大于 $5$ 米，且从 $P$ 看去的夹角不超过 $2\delta$，
@@ -437,7 +475,7 @@ $U_{\rm best}$，若 $\ell_{\rm pair}(P)>U_{\rm best}+\tau$，
 则可排除该点，不必进一步细算。
 这种淘汰有必要条件依据；仅凭近似排序略过候选点则属于启发式筛选。
 
-\subsubsection{固定检测点的自适应角度计算}
+\subsubsection{第二阶段打分（精评）：严密几何多边形求交与最小包围圆（MEC）}
 
 固定 $P$ 后，用源域的凸外多边形确定可能方向的覆盖区间，
 再向两侧扩展 $\delta$。若 $P$ 位于该多边形内，取整个圆周。
@@ -462,7 +500,17 @@ L(P)=\max\{\ell_{\rm pair}(P),r_*,\max_{\text{已采样 }j}\rho(K_j^-)\}
 内外近似须保持包含方向：源域圆弧用连弦构造子集、相邻切线构造超集；
 扣除近源圆孔时则相反，内近似扣除外接孔，外近似只扣除内接孔。
 对正 $n$ 边形，半径为 $a$ 的内接孔的边心距为 $a\cos(\pi/n)$。
-裁剪后对各凸片的全部顶点求最小包围圆，得到相应半径与圆心。
+裁剪后，我们需要对各凸片的全部顶点求“最小包围圆”（Minimum Enclosing Circle, MEC），得到相应半径与圆心。这也是我们第二阶段精评打分的绝对依据。
+
+\textbf{最小包围圆（MEC）算法原理与公式：}
+给定多边形的顶点集合 $S = \{V_1, V_2, \dots, V_m\}$，最小包围圆问题是寻找一个半径最小的圆，使得集合 $S$ 中的所有点都在该圆内或圆周上。其数学模型为求解如下最优化问题：
+\begin{equation}
+\begin{aligned}
+\min_{c, \rho} \quad & \rho \\
+\text{s.t.} \quad & \|V_i - c\| \le \rho, \quad \forall i=1,2,\dots,m
+\end{aligned}
+\end{equation}
+根据计算几何原理，该最优包围圆是唯一存在的，并且它完全由集合 $S$ 中位于其边界上的 $2$ 个点（这两个点构成圆的直径）或者 $3$ 个点（这三个点构成圆的内接锐角三角形）来唯一确定。在程序实现中，我们将多边形的顶点离散化后，直接计算其极小极值包围圆的半径 $\rho$。这就是我们在给定测向角 $\beta$ 时所面临的最坏误差半径。
 
 每次二分上界最大的角度箱，直到 $U-L$ 达到指定容差，
 或下界超过淘汰阈值，或达到计算预算。
@@ -572,7 +620,52 @@ $[\QBestL,\QBestU]$ 米。
 因此 $\widehat m$ 不是经过证明的全局最优值。
 若需要第三次观测，可将实际第二次读数得到的 $J$ 作为新的源域继续选点；
 后续任务还应计入前往光学检测位置及清除所需的时间。
-
+\subsection{问题3：第三检测点的选择}
+关于干扰源在被机器狗检测与清除过程中大概有四种状态，如下表。
+\begin{table}[!htbp]
+    \centering
+    \small
+    \caption{干扰源状态分类表}
+    \label{tab:interference_status}
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{|>{\centering\arraybackslash}p{2.5cm}|>{\centering\arraybackslash}p{8cm}|}
+        \hline
+        \rowcolor[HTML]{DDEBF7}
+        \textbf{种类} & \textbf{干扰源状态} \\
+        \hline
+        01 & 未被检测到 \\
+        \hline
+        02 & 直径已小于20\,m，可以清除 \\
+        \hline
+        03 & 已被清除 \\
+        \hline
+        04 & 无法精确定位 \\
+        \hline
+    \end{tabular}
+\end{table}
+对于编号为04的状态，即干扰源无法精确定位的状态，可以使用问题2的模型解决。
+如果存在某些干扰源在$M_i\cap M_j$中，则可以在$S_i$，$S_j$分别探测形成交叉，其中有$v_t\in M_i\cap M_j$。
+到某些干扰源予以清除时可以再次探测形成交叉，即$d\leqslant 20m$时。
+若某干扰源$v_t$不在其他位置探测区域，则将其频道不予考虑，即$\forall i,j,v_t\notin M_i\cap M_j$
+\begin{figure}[!htpb]
+    \centering
+    \includegraphics[width=0.8\linewidth]{问题3优化结果/problem3_compare_edge.png}
+    \caption{问题3边界情形下的比较结果}
+    \label{fig:problem3_edge}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{问题3优化结果/problem3_compare_uniform.png}
+    \caption{均匀情形下的比较结果}
+    \label{fig:problem3_uniform}
+\end{figure}
+\subsection{问题4}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{问题4结果/problem4_mc_uniform.png}
+    \caption{均匀情形下的问题4结果比较}
+    \label{fig:problem4_uniform}
+\end{figure}
 \section{模型的评价、改进与推广}
 \section{AI工具使用声明}
 本参赛队在竞赛过程中使用了 AI 工具，
@@ -581,8 +674,6 @@ $[\QBestL,\QBestU]$ 米。
 
 % 注意：下方 thebibliography 会自动生成"参考文献"标题并加入目录，
 % 因此这里不要再手动 \section 一个"参考文献"标题，否则会重复。
-\LaTeX{}的入门书籍可以看《\LaTeX{}入门》\cite{liuhaiyang2013latex}。这是一个简单的引用，用 \verb|\cite{bibkey}| 来完成。要引用成功，当然要维护好 bibitem 了。下面是个简单的例子。
-
 %参考文献
 \begin{thebibliography}{9}%宽度9，表示标签（Label）的最大宽度预留
     \bibitem[1]{liuhaiyang2013latex}
