@@ -1,10 +1,13 @@
-function out = problem3_solver_shared(robotId, baseUrl)
+function out = problem3_solver_shared(robotId, baseUrl, anchorCoefficient)
 % 问题三共享观测版：短半径覆盖骨架 + 动态开放路径 + 同点多频道观测。
 % 官方模拟器就绪后：out = problem3_solver_shared('你们的参赛队号');
 % 本地公平对比请运行 problem3_compare_shared_monte_carlo。
+% 灵敏度试验可传入第三个参数anchorCoefficient，默认值为60 m/频道。
 % 基础款和原优化版均保持不变；本文件继续复用问题一、二的几何工具。
 if nargin < 1, error('请传入参赛队号；本地测试请运行 problem3_compare_shared_monte_carlo。'); end
 if nargin < 2, baseUrl = 'http://127.0.0.1:2026'; end
+if nargin < 3 || isempty(anchorCoefficient), anchorCoefficient = 60; end
+validateattributes(anchorCoefficient,{'numeric'},{'scalar','real','finite','nonnegative'});
 root = fileparts(mfilename('fullpath'));
 addpath(fullfile(root,'问题1_交会定位'));
 addpath(genpath(fullfile(root,'问题2_第二检测点选择')));
@@ -30,7 +33,7 @@ coverR = 1000-margin-1e-6;
 % 对最小半径1200 m，外层最坏格心到最近环站的距离上界为980.05 m，
 % 小于coverR=985.86 m；更大的环站半径也通过相同不等式验证。
 % 因而自适应选择仍保证发现接收半径至少1000 m的任意全向源。
-anchors = zeros(2,0); anchorRadius = nan;
+anchors = zeros(2,0); anchorRadius = nan; initialFound = nan;
 a = (0:63)*2*pi/64;
 domain = 1800/cos(pi/64)*[cos(a);sin(a)]; % 目标圆的外接多边形
 reply = act('/enter'); limit = reply.remaining_real_duration_s;
@@ -50,7 +53,8 @@ while true
         pending = find(known & ~done);
     end
     if isempty(anchors)
-        anchorRadius=max(1200,1500-60*sum(known));
+        initialFound=sum(known);
+        anchorRadius=max(1200,1500-anchorCoefficient*initialFound);
         anchors=anchorRadius*[cos((0:5)*pi/3);sin((0:5)*pi/3)];
     end
     if isempty(pending) && isempty(unseen), break; end
@@ -128,7 +132,8 @@ out = struct('cleared',sum(done),'totalTime',vt,'averageTime',vt/max(1,sum(done)
     'complete',all(~known|done) && (isempty(unseen)||sum(done)==16), ...
     'reason',reason,'runtime',toc(clock0),'discoveryTime',discovered, ...
     'clearTime',cleared,'history',{history},'remainingCells',size(unseen,2), ...
-    'anchorRadius',anchorRadius);
+    'anchorRadius',anchorRadius,'anchorCoefficient',anchorCoefficient, ...
+    'initialFound',initialFound);
 if ~local
     stamp=char(datetime('now','Format','yyyyMMdd_HHmmss'));
     save(fullfile(root,['problem3_shared_run_' stamp '.mat']),'out');
