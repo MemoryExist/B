@@ -1,16 +1,16 @@
 function [comparison,summary] = problem4_compare_split_monte_carlo(trials,seed,scenario)
 % 同一批问题四案例上配对比较基础款与“全向优先/定向分流”优化款。
 % [comparison,summary]=problem4_compare_split_monte_carlo(100,20260912,'uniform');
-% scenario：uniform / edge / all_directional / extreme。
+% scenario：uniform / edge / all_omnidirectional / all_directional / extreme。
 if nargin<1, trials=100; end
 if nargin<2, seed=20260912; end
 if nargin<3, scenario='uniform'; end
 validateattributes(trials,{'numeric'},{'scalar','integer','positive'});
-assert(ismember(scenario,{'uniform','edge','all_directional','extreme'}),'未知场景。');
+assert(ismember(scenario,{'uniform','edge','all_omnidirectional','all_directional','extreme'}),'未知场景。');
 root=fileparts(mfilename('fullpath')); addpath(root);
 world=RandStream('mt19937ar','Seed',seed);
 oldRng=rng; cleanup=onCleanup(@() rng(oldRng));
-values=zeros(2*trials,21); algorithms=strings(2*trials,1); errors=strings(2*trials,1);
+values=zeros(2*trials,20); algorithms=strings(2*trials,1); errors=strings(2*trials,1);
 solvers={@problem4_solver,@problem4_solver_split}; labels=["base" "split"];
 for trial=1:trials
     n=randi(world,[10,16]); channels=randperm(world,20,n);
@@ -20,6 +20,8 @@ for trial=1:trials
     directed(randperm(world,n,nDir))=true; emit=2*pi*rand(world,1,n);
     if strcmp(scenario,'edge')
         xy=1800*[cos(theta);sin(theta)]; radius(:)=1000; emit(directed)=theta(directed);
+    elseif strcmp(scenario,'all_omnidirectional')
+        directed(:)=false;
     elseif strcmp(scenario,'all_directional')
         directed(:)=true;
     elseif strcmp(scenario,'extreme')
@@ -40,11 +42,12 @@ end
 names={'Trial','N','Directional','Cleared','Total_s','Average_s','Runtime_s', ...
     'Complete','Move_s','Switch_s','Measure_s','OpticalLaser_s','StationsVisited', ...
     'Fallbacks','RaySweeps','DirectionObservations','GlobalMove_s','LocalMove_s', ...
-    'DirectionalMode','CertifiedDirectional','P2Tests'};
+    'ConfirmedDirectional','OmniRefinements'};
 comparison=array2table(values,'VariableNames',names);
 comparison.Algorithm=algorithms; comparison.Error=errors;
 comparison=movevars(comparison,{'Algorithm','Error'},'After','Trial');
 b=comparison(comparison.Algorithm=="base",:); s=comparison(comparison.Algorithm=="split",:);
+delta=b.Average_s-s.Average_s;
 summary=table(labels',[mean(b.Average_s);mean(s.Average_s)], ...
     [sum(b.Total_s)/sum(b.Cleared);sum(s.Total_s)/sum(s.Cleared)], ...
     [mean(b.Total_s);mean(s.Total_s)],[mean(b.Move_s);mean(s.Move_s)], ...
@@ -54,7 +57,12 @@ summary=table(labels',[mean(b.Average_s);mean(s.Average_s)], ...
     'VariableNames',{'Algorithm','MeanAverage_s','PooledAverage_s','MeanTotal_s', ...
     'MeanMove_s','MeanMeasureSwitch_s','MeanGlobalMove_s','MeanLocalMove_s', ...
     'FullClearRate','Below300Rate'});
-delta=b.Average_s-s.Average_s;
+ci=1.96*std(delta)/sqrt(trials);
+summary.PairedMeanSaving_s=[NaN;mean(delta)];
+summary.PairedSavingPct=[NaN;100*mean(delta)/mean(b.Average_s)];
+summary.PairedWinRate=[NaN;mean(delta>0)];
+summary.SavingCI95Low_s=[NaN;mean(delta)-ci];
+summary.SavingCI95High_s=[NaN;mean(delta)+ci];
 fprintf('\n%s：基础 %.2f，分流 %.2f s/源；平均节省 %.2f s/源（%.1f%%）。\n', ...
     scenario,mean(b.Average_s),mean(s.Average_s),mean(delta),100*mean(delta)/mean(b.Average_s));
 fprintf('全清率：基础 %.1f%%，分流 %.1f%%；分流胜出 %.1f%% 的配对案例。\n', ...
@@ -65,9 +73,10 @@ writetable(comparison,[prefix '_runs.csv']); writetable(summary,[prefix '_summar
 save([prefix '.mat'],'comparison','summary','seed','scenario');
 f=figure('Color','w','Visible','off','Position',[100 100 900 650]); tiledlayout(2,1);
 nexttile; plot(b.Average_s,'o-','DisplayName','基础款'); hold on;
-plot(s.Average_s,'o-','DisplayName','分流款'); yline(300,'r--','300 s');
+plot(s.Average_s,'o-','DisplayName','分流款');
+yline(300,'r--','300 s','HandleVisibility','off','LabelHorizontalAlignment','left');
 ylabel('Time per source (s)'); legend('Location','best'); title(['Problem 4: ' scenario]); grid on;
-nexttile; bar(delta); yline(0,'k-'); xlabel('Paired trial');
+nexttile; bar(delta); yline(0,'k-','HandleVisibility','off'); xlabel('Paired trial');
 ylabel('Base - split (s/source)'); grid on;
 set(findall(f,'Type','axes'),'Color','w','XColor','k','YColor','k','GridColor',[.3 .3 .3]);
 set(findall(f,'Type','text'),'Color','k'); exportgraphics(f,[prefix '.png'],'Resolution',150); close(f);
@@ -84,16 +93,15 @@ catch err
 end
 count=sum(~live); average=t/max(1,count); if count==0, average=inf; end
 complete=~any(live)&&isfield(result,'complete')&&result.complete;
-v=nan(1,9);
+v=nan(1,8);
 if isfield(result,'stationsVisited'), v(1)=result.stationsVisited; end
 if isfield(result,'fallbackCount'), v(2)=result.fallbackCount; end
 if isfield(result,'raySweepCount'), v(3)=result.raySweepCount; end
 if isfield(result,'observations'), v(4)=sum(result.observations); end
 if isfield(result,'globalDistance'), v(5)=result.globalDistance/5; end
 if isfield(result,'localDistance'), v(6)=result.localDistance/5; end
-if isfield(result,'directionalModeCount'), v(7)=result.directionalModeCount; end
-if isfield(result,'certifiedDirectionalCount'), v(8)=result.certifiedDirectionalCount; end
-if isfield(result,'p2Tests'), v(9)=result.p2Tests; end
+if isfield(result,'confirmedDirectionalCount'), v(7)=result.confirmedDirectionalCount; end
+if isfield(result,'omniRefinements'), v(8)=result.omniRefinements; end
 metrics=[count,t,average,toc(start),complete,parts,v];
 assert(abs(t-sum(parts))<1e-6,'模拟计时分项不守恒。');
 

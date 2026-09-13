@@ -21,8 +21,8 @@ firstPos=nan(2,20); firstTheta=nan(1,20);
 discovered=nan(1,20); cleared=nan(1,20); history=cell(0,3);
 fallbackCount=0; raySweepCount=0;
 
-% 分流改动：mode=1 表示仍按全向源处理，mode=2 表示转入定向稳健追踪。
-mode=zeros(1,20); certifiedDirectional=false(1,20); omniRefineCount=0;
+% 分流改动：mode=1 表示保留全向假设，mode=2 表示已严格确认定向。
+mode=zeros(1,20); omniRefineCount=0;
 
 % 与基础款完全相同的25点确定性覆盖证书，不淘汰任何未发现频道。
 a=(0:11)*pi/6;
@@ -87,8 +87,8 @@ out=struct('cleared',sum(done),'totalTime',vt,'averageTime',vt/max(1,sum(done)),
     'stationsVisited',sum(visited),'stationCount',size(stations,2), ...
     'fallbackCount',fallbackCount,'raySweepCount',raySweepCount, ...
     'globalDistance',globalDistance,'localDistance',localDistance, ...
-    'directionalModeCount',sum(mode==2),'certifiedDirectionalCount',sum(certifiedDirectional), ...
-    'p2Tests',omniRefineCount);
+    'confirmedDirectionalCount',sum(mode==2), ...
+    'omniRefinements',omniRefineCount);
 if ~local
     stamp=char(datetime('now','Format','yyyyMMdd_HHmmss'));
     save(fullfile(root,['problem4_split_run_' stamp '.mat']),'out');
@@ -100,22 +100,14 @@ end
         if done(k), return; end
         if radii(k)<=20 && clearAt(centers(:,k),k), return; end
 
-        % 分流改动：尚未出现过失联时，先假设为全向源，直接复用问题三
-        % “区域中心+小幅侧移”的定位形式；点位落在1000 m保证区时，
-        % 一旦无信号便可严格确认定向，并立即退出本段。
-        if mode(k)==1 && radii(k)<=150
+        % 分流改动：尚未出现过失联时，先假设为全向源，直接复用问题三的
+        % “区域中心清除/测向”。此时整个候选区都在1000 m内；若无信号，
+        % 便可排除全向源并严格转入定向追踪。
+        if mode(k)==1 && radii(k)<=100
             for omniStep=1:2
                 if done(k)||mode(k)==2, break; end
-                c=centers(:,k); r=radii(k);
-                if r<=60
-                    if clearAt(c,k), return; end
-                    hit=observe(pos,k,true);
-                else
-                    u=c-pos; if norm(u)<1e-9, u=[1;0]; end
-                    u=u/norm(u); side=min(80,r/2);
-                    q=c+side*[-u(2);u(1)];
-                    hit=observe(q,k,r+side<=1000);
-                end
+                if clearAt(centers(:,k),k), return; end
+                hit=observe(pos,k,true);
                 omniRefineCount=omniRefineCount+1;
                 if ~hit, break; end
                 if radii(k)<=20 && clearAt(centers(:,k),k), return; end
@@ -139,7 +131,6 @@ end
             if ~done(k)&&~hit, hit=observe(probes(:,2),k,false); end
             if done(k), return; end
             if ~hit
-                mode(k)=2;
                 raySweep(k,q0,th,advance/cos(deg2rad(1.005))+1); return;
             end
             if clearAt(lastPos(:,k),k), return; end
@@ -185,11 +176,10 @@ end
         if known(k) && ~rangeCertified, rangeCertified=rangeGuaranteed(q,k); end
         z=act('/measure',q,k); hit=~strcmp(z.measure_result,'no_signal');
         if ~hit
-            if known(k) && mode(k)==1
-                % 用户提出的“先全向、出现时有时无再按定向处理”。普通
-                % 失联只改变求解分支；保证在接收距离内时还可严格确认定向。
+            if known(k) && mode(k)==1 && rangeCertified
+                % “先按全向处理，再由受控失联确认定向”：只有保证Q到
+                % 整个候选区都在接收范围内时，无信号才不可能由距离造成。
                 mode(k)=2;
-                if rangeCertified, certifiedDirectional(k)=true; end
             end
             return;
         end
