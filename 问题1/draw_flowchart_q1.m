@@ -1,8 +1,8 @@
 % 生成问题一求解流程图
-% 流程：经过闭凸性和有界性限定 -> 判断其为凸多边形结构 -> 得到直径的计算公式 -> 通过向量化求解方法求出直径
+% 流程：建立半平面模型 -> 求解多边形顶点 -> 转化为顶点极值问题 -> 向量化求解直径
 
 % 创建一个新的图形窗口
-fig = figure('Name', '问题一流程图', 'Color', 'w', 'Position', [200, 200, 500, 650]);
+fig = figure('Name', '问题一流程图', 'Color', 'w', 'Position', [200, 200, 650, 750]);
 
 % 设置坐标轴范围并隐藏坐标轴
 axes('Position', [0 0 1 1]);
@@ -10,64 +10,88 @@ axis([0 1 0 1]);
 axis off;
 hold on;
 
-% 定义流程图的框的参数
-boxWidth = 0.65;
-boxHeight = 0.12;
-boxX = 0.5 - boxWidth/2;
-yStart = 0.78; % 第一个框的底部y坐标
-yGap = 0.18;  % 框之间的垂直间距
-
 % 定义各步骤的文本
 texts = {
-    '通过闭凸性和有界性限定',
-    '判断其为凸多边形结构',
-    '得到直径的计算公式',
-    '通过向量化求解方法求出直径'
+    'Step 1: 建立交会区域的半平面约束模型',
+    'Step 2: 证明闭凸性和有界性',
+    'Step 3: 说明其有界闭凸多边形结构',
+    'Step 4: 基于向量化方法高效计算直径'
     };
 
-% 绘制矩形和文本
+% 定义色彩风格 (Pastel UI)
+colors = [
+    228, 240, 255; % 浅蓝
+    235, 250, 235; % 浅绿
+    255, 240, 228; % 浅橙
+    250, 235, 255; % 浅紫
+    ] / 255;
+
+edgeColors = [
+    80, 130, 200;
+    90, 160, 90;
+    200, 130, 80;
+    160, 90, 160;
+    ] / 255;
+
+% 定义流程图的框的参数
+boxW = 0.8;
+boxH = 0.12;
+boxX = 0.5 - boxW/2;
+yStart = 0.78; % 第一个框的底部y坐标
+yGap = 0.18;   % 框之间的垂直间距
+
+% 添加主标题
+text(0.5, 0.95, '问题一：交会定位区域及其直径求解流程', ...
+    'HorizontalAlignment', 'center', ...
+    'VerticalAlignment', 'middle', ...
+    'FontSize', 20, ...
+    'FontWeight', 'bold', ...
+    'FontName', 'Microsoft YaHei', ...
+    'Color', [0.15 0.15 0.15]);
+
+% 绘制矩形、阴影和文本
 for i = 1:length(texts)
     boxY = yStart - (i-1)*yGap;
 
-    % 绘制带圆角的矩形
-    rectangle('Position', [boxX, boxY, boxWidth, boxHeight], ...
+    % 1. 绘制阴影 (偏移 0.008)
+    rectangle('Position', [boxX + 0.008, boxY - 0.008, boxW, boxH], ...
         'Curvature', 0.2, ...
-        'FaceColor', [0.85 0.93 1], ... % 淡蓝色
-        'EdgeColor', [0.2 0.5 0.8], ... % 深蓝色边界
-        'LineWidth', 1.5);
+        'FaceColor', [0.9 0.9 0.9], ...
+        'EdgeColor', 'none');
 
-    % 添加文本
-    text(0.5, boxY + boxHeight/2, texts{i}, ...
+    % 2. 绘制主框
+    rectangle('Position', [boxX, boxY, boxW, boxH], ...
+        'Curvature', 0.2, ...
+        'FaceColor', colors(i,:), ...
+        'EdgeColor', edgeColors(i,:), ...
+        'LineWidth', 2);
+
+    % 3. 添加文本
+    text(0.5, boxY + boxH/2, texts{i}, ...
         'HorizontalAlignment', 'center', ...
         'VerticalAlignment', 'middle', ...
-        'FontSize', 14, ...
+        'FontSize', 15, ...
         'FontWeight', 'bold', ...
-        'FontName', 'Microsoft YaHei');
+        'FontName', 'Microsoft YaHei', ...
+        'Color', [0.1 0.1 0.1]);
+
+    % 4. 绘制向下箭头 (除了最后一个)
+    if i < length(texts)
+        arrX = 0.5;
+        arrY_start = boxY;
+        arrY_end = boxY - (yGap - boxH) + 0.01; % 留一点间隙
+
+        % 画线
+        plot([arrX, arrX], [arrY_start, arrY_end], 'Color', [0.5 0.5 0.5], 'LineWidth', 3);
+
+        % 画箭头头部
+        headW = 0.015;
+        headH = 0.025;
+        fill([arrX, arrX-headW, arrX+headW], ...
+            [arrY_end, arrY_end+headH, arrY_end+headH], ...
+            [0.5 0.5 0.5], 'EdgeColor', 'none');
+    end
 end
-
-% 绘制箭头
-for i = 1:length(texts)-1
-    startY = yStart - (i-1)*yGap;
-    endY = yStart - i*yGap + boxHeight;
-
-    % 绘制直线部分
-    plot([0.5, 0.5], [startY, endY], 'Color', [0.2 0.5 0.8], 'LineWidth', 1.5);
-
-    % 绘制箭头头部 (向下的实心三角形)
-    headWidth = 0.02;
-    headHeight = 0.03;
-    fill([0.5, 0.5-headWidth, 0.5+headWidth], ...
-        [endY, endY+headHeight, endY+headHeight], ...
-        [0.2 0.5 0.8], 'EdgeColor', 'none');
-end
-
-% 添加标题
-text(0.5, 0.96, '问题一直径求解流程图', ...
-    'HorizontalAlignment', 'center', ...
-    'VerticalAlignment', 'middle', ...
-    'FontSize', 16, ...
-    'FontWeight', 'bold', ...
-    'FontName', 'Microsoft YaHei');
 
 hold off;
 

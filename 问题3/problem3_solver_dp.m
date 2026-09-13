@@ -1,3 +1,4 @@
+
 function out = problem3_solver_dp(robotId, baseUrl)
 % 问题三优化版：短半径覆盖骨架 + 动态开放路径 + 1500m远距剔除剪枝（仅适用全向源）。
 if nargin < 1, error('请传入参赛队号；本地测试请运行相应的 test 脚本。'); end
@@ -49,15 +50,42 @@ while true
         pending = find(known & ~done);
     end
     if isempty(anchors)
-        anchorRadius=max(1200,1500-60*sum(known));
-        anchors=anchorRadius*[cos((0:5)*pi/3);sin((0:5)*pi/3)];
+        % 预计算更紧凑的 ILP 覆盖点集代替边缘圆周锚点
+        rng(2026);
+        cx = -1800:100:1800; cy = -1800:100:1800;
+        [X,Y] = meshgrid(cx, cy);
+        cand = [X(:)'; Y(:)'];
+        cand = cand(:, vecnorm(cand) <= 1800);
+
+        gx = -1800:150:1800; gy = -1800:150:1800;
+        [Xg,Yg] = meshgrid(gx, gy);
+        gridPts = [Xg(:)'; Yg(:)'];
+        gridPts = gridPts(:, vecnorm(gridPts) <= 1800);
+
+        D_mat = pdist2(gridPts', cand');
+        A = double(D_mat <= 950);
+        f = ones(size(cand, 2), 1);
+        intcon = 1:length(f);
+        b = -ones(size(gridPts, 2), 1);
+        A_ineq = -A;
+        options = optimoptions('intlinprog','Display','off');
+        [x, ~, exitflag] = intlinprog(f, intcon, A_ineq, b, [], [], zeros(length(f),1), ones(length(f),1), options);
+        if exitflag > 0
+            anchors = cand(:, round(x) == 1);
+        else
+            anchorRadius=max(1200,1500-60*sum(known));
+            anchors=anchorRadius*[cos((0:5)*pi/3);sin((0:5)*pi/3)];
+        end
     end
     if isempty(pending) && isempty(unseen), break; end
     useful = any(hypot(unseen(1,:)'-anchors(1,:), ...
-                       unseen(2,:)'-anchors(2,:))<=coverR,1);
+        unseen(2,:)'-anchors(2,:))<=coverR,1);
 
     % 把待清除目标与尚有覆盖贡献的骨架站放入同一条开放路径。
     tasks = [centers(:,pending),anchors(:,useful)];
+    if isempty(tasks) && ~isempty(unseen)
+        tasks = unseen(:,1);
+    end
     tour = zeros(1,size(tasks,2)); left = 1:size(tasks,2); q = pos;
     for i = 1:numel(tour)
         [~,j] = min(vecnorm(tasks(:,left)-q));
@@ -94,7 +122,7 @@ while true
             if done(k), continue; end
             if known(k)
                 if min(vecnorm(regions{k} - q)) > 1500 + 1e-7
-                    continue; 
+                    continue;
                 end
             end
             if ~known(k) || radii(k)>60
