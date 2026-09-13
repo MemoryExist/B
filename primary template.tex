@@ -835,53 +835,24 @@ $[\QBestL,\QBestU]$ 米。
 % 因此这里不要再手动 \section 一个"参考文献"标题，否则会重复。
 %参考文献
 \begin{thebibliography}{9}%宽度9，表示标签（Label）的最大宽度预留
-    \bibitem[1]{liuhaiyang2013latex}
-    刘海洋.
-    \newblock \LaTeX {}入门\allowbreak[J].%允许在适当位置换行
-    \newblock 电子工业出版社, 北京, 2013.
-    \bibitem[2]{mathematical-modeling}
-    全国大学生数学建模竞赛论文格式规范 (2020 年 8 月 25 日修改).
-    \bibitem{3} \url{https://www.latexstudio.net}
+    \bibitem[1]{jinjieru2022}
+    金洁茹.
+    \newblock 应急医疗物资通用航空调度模型优化研究[D].
+    \newblock 南京: 南京航空航天大学, 2022.
+    \bibitem[2]{songliang2018}
+    宋亮.
+    \newblock 面向物流行业的车辆路径问题数学建模与近似算法设计[D].
+    \newblock 哈尔滨: 哈尔滨工业大学, 2018.
 \end{thebibliography}
 
 \newpage
 %附录
 \begin{appendices}
 
-\section{模板所用的宏包}
-\begin{table}[htbp]
-    \centering
-    \caption{宏包罗列}
-    \begin{tabular}{ccccc}
-        \toprule
-        \multicolumn{5}{c}{模板中已经加载的宏包} \\
-        \midrule
-        amsbsy & amsfonts & {amsgen} & {amsmath} & {amsopn} \\
-        amssymb & amstext & {appendix} & {array} & {atbegshi} \\
-        atveryend & auxhook & {bigdelim} & {bigintcalc} & {bigstrut} \\
-        bitset & bm    & {booktabs} & {calc} & {caption} \\
-        caption3 & CJKfntef & {cprotect} & {ctex} & {ctexhook} \\
-        ctexpatch & enumitem & {etexcmds} & {etoolbox} & {everysel} \\
-        expl3 & fix-cm & {fontenc} & {fontspec} & {fontspec-xetex} \\
-        geometry & gettitlestring & {graphics} & {graphicx} & {hobsub} \\
-        hobsub-generic & hobsub-hyperref & {hopatch} & {hxetex} & {hycolor} \\
-        hyperref & ifluatex & {ifpdf} & {ifthen} & {ifvtex} \\
-        ifxetex & indentfirst & {infwarerr} & {intcalc} & {keyval} \\
-        kvdefinekeys & kvoptions & {kvsetkeys} & {l3keys2e} & {letltxmacro} \\
-        listings & longtable & {lstmisc} & {ltcaption} & {ltxcmds} \\
-        multirow & nameref & {pdfescape} & {pdftexcmds} & {refcount} \\
-        rerunfilecheck & stringenc & {suffix} & {titletoc} & {tocloft} \\
-        trig  & ulem  & {uniquecounter} & {url} & {xcolor} \\
-        xcolor-patch & xeCJK & {xeCJKfntef} & {xeCJK-listings} & {xparse} \\
-        xtemplate & zhnumber &       &       &  \\
-        \bottomrule
-    \end{tabular}%
-    \label{tab:addlabel}%
-\end{table}%
-
-
 
 \section{matlab 源程序}
+
+\begin{center}\textbf{问题一}\end{center}
 
 \begin{lstlisting}[language=matlab]
 function [D, V, flag, AB] = position_diameter(S, theta)
@@ -1034,6 +1005,685 @@ function z = cross2(a, b)
 z = a(1)*b(2) - a(2)*b(1);
 end
  \end{lstlisting}
+
+
+% ===================== diameter_many.m =====================
+
+\begin{lstlisting}[language=matlab]
+function D = diameter_many(V)
+%DIAMETER_MANY 批量计算多个凸多边形的直径（向量化，R2016b+ 隐式扩展）
+%   D = diameter_many(V)
+%
+%   输入 V: 1×P cell 数组，V{p} 为第 p 个多边形的顶点（m_p×2，逆时针）
+%   输出 D: P×1 各多边形的直径（米）
+%
+%   原理：凸多边形直径 = 顶点对最大距离。
+%   顶点少、多边形多时，瓶颈是逐多边形循环；本函数把所有多边形堆成三维数组，
+%   用隐式扩展一次性算完所有顶点对距离，全程向量化（仅堆叠一步有循环）。
+
+    P    = numel(V);
+    mmax = max(cellfun(@(v) size(v,1), V));
+
+    % 堆成 mmax×2×P 三维数组，缺省顶点用 NaN 填充
+    X = NaN(mmax, 2, P);
+    for p = 1:P
+        X(1:size(V{p},1), :, p) = V{p};
+    end
+
+    % 所有顶点对 (i,j) 的坐标差：mmax×mmax×P（隐式扩展，无双重循环）
+    dx = X(:,1,:) - permute(X(:,1,:), [2 1 3]);   % x_i - x_j
+    dy = X(:,2,:) - permute(X(:,2,:), [2 1 3]);   % y_i - y_j
+    D2 = dx.^2 + dy.^2;                           % 所有顶点对平方距离
+
+    D2(isnan(D2)) = 0;        % NaN（补位处）置 0，不影响取最大值
+
+    D = sqrt(max(D2, [], [1 2]));   % 1×1×P
+    D = squeeze(D);                 % P×1
+end
+\end{lstlisting}
+
+
+\begin{center}\textbf{问题二}\end{center}
+
+% ===================== main_problem2.m =====================
+
+\begin{lstlisting}[language=matlab]
+function [out, V, S] = main_problem2(mode)
+%MAIN_PROBLEM2 默认仅搜索、绘图与导出；'verify' 单独验证，'full' 另做敏感性分析。
+if nargin == 0, mode = 'run'; end
+assert(any(strcmp(mode, {'run','verify','full'})), '模式应为 run、verify 或 full。');
+root = fileparts(mfilename('fullpath'));
+old = pwd; cleanup = onCleanup(@() cd(old));
+cd(root); addpath(genpath(root));
+cfg = config_problem2();
+if ~isfolder(cfg.results_dir), mkdir(cfg.results_dir); end
+if ~isfolder(cfg.fig_dir), mkdir(cfg.fig_dir); end
+out = []; V = []; S = [];
+t_all = tic;
+fprintf('问题二：第二检测点选择 | MATLAB %s\n', version);
+if any(strcmp(mode, {'verify','full'}))
+    V = verify_problem2();
+    assert(V.nfail == 0, '验证失败，请检查 results/verify_results.mat。');
+    if strcmp(mode, 'verify'), return; end
+end
+out = outer_search(cfg);
+if strcmp(mode, 'full'), S = sensitivity(out, cfg); end
+plot_problem2(cfg, out);
+out.t_run = toc(t_all);
+export_problem2(out, cfg);
+save(fullfile(cfg.results_dir, 'out.mat'), 'out', 'cfg', 'V', 'S', '-v7');
+fprintf('完成：搜索 %.2f s，总计 %.2f s（均不含 MATLAB 启动）。\n', out.t_total, out.t_run);
+fprintf('数值及论文数据：results/；图：figures/。\n');
+end
+
+\end{lstlisting}
+
+
+% ===================== config_problem2.m =====================
+
+\begin{lstlisting}[language=matlab]
+function cfg = config_problem2()
+%CONFIG_PROBLEM2 问题二全部参数集中配置(几何参数、算法参数、计算预算)
+% 默认情形: 未被目标圆域裁切的标准完整扇区 D(见 README 默认假设)
+cfg.seed          = 42;      % 全局随机种子(候选点/包围圆置换)
+% ---- 题目几何参数(单位: 米/度) ----
+cfg.delta_deg     = 1;       % 示向度误差半角(度)
+cfg.delta         = deg2rad(cfg.delta_deg);
+cfg.R0            = 1000;    % 有效接收半径下界(保守)
+cfg.Lmax          = 1500;    % 有效接收半径上界/标准扇区外半径
+cfg.r_inner       = 5;       % 近源孔半径(距离≤5 米转入光学分支)
+cfg.clear_radius  = 20;      % 光学精确定位/清除半径
+cfg.speed         = 5;       % 机器狗速度(米/秒)
+% ---- 目标圆域裁切(可选, 默认关闭=标准完整扇区) ----
+cfg.crop_enabled  = false;   % true 时源域 D 再与目标圆相交
+cfg.crop_center   = [0; 0];  % 目标圆心(局部坐标)
+cfg.crop_radius   = 1800;    % 目标圆域半径
+% ---- 几何近似分辨率 ----
+cfg.n_arc         = 64;      % 仅对 2° 扇区圆弧分段
+cfg.n_crop        = 512;     % 裁切圆多边形边数(仅 crop_enabled 时使用)
+cfg.n_hole_gon    = 64;      % 近源孔多边形，仅在确实接近孔时处理
+cfg.hole_margin   = 1e-7;    % 孔内/外近似数值余量(米)
+% ---- 最小包围圆数值容差 ----
+cfg.mec_tol       = 1e-9;    % 绝对容差(米)
+cfg.mec_tol_rel   = 1e-12;   % 相对容差
+% ---- 固定点评价(角度区间自适应细分) ----
+cfg.eta0          = deg2rad(4);   % 初始角度箱半宽
+cfg.tol_coarse    = 2.0;          % 粗评上下界差目标(米)
+cfg.tol_fine      = 0.1;          % 精评上下界差目标(米)
+cfg.budget_coarse = 160;          % 粗评单点最大角度评价次数
+cfg.budget_fine   = 900;          % 精评单点最大角度评价次数
+% ---- 见证点(点对下界) ----
+cfg.witness_r     = [5.01 10 20 50 100 200 350 500 600 740 750 1000 1250 1448.54 1500];
+cfg.witness_ang_deg = [-1 -0.6 -0.2 0 0.2 0.6 1];
+% ---- 外层搜索 ----
+cfg.cand_grid     = 20;      % E 内规则网格每维点数
+cfg.cand_random   = 160;     % E 内均匀随机候选点数
+cfg.n_hat_top     = 20;      % 近似指标最优进入粗评的点数
+cfg.n_diverse     = 12;      % 多样化补充起点数
+cfg.tau_m         = 1.0;     % 精度让步 τ(米): 在 F_τ 内选移动距离最短
+cfg.n_search_starts = 3;     % 局部搜索起点数
+cfg.ls_step0      = 48;      % 模式搜索初始步长(米)
+cfg.ls_step_min   = 4;       % 模式搜索最小步长(米)
+cfg.ls_shrink     = 0.5;     % 步长缩减因子
+cfg.ls_max_iter   = 45;      % 单次搜索最大迭代数
+cfg.start_min_sep = 60;      % 搜索起点间最小距离(米)
+cfg.fine_pool     = 3.0;     % 精评池: L ≤ U_best + fine_pool 的点
+cfg.max_eval_calls = 350;    % 外层评价调用预算，精评复核另设点数上限
+cfg.fine_max_points = 24;   % 精评池上限，同时保留低上界与短距离候选
+cfg.verbose        = true;
+% ---- 输出 ----
+cfg.results_dir   = 'results';
+cfg.fig_dir       = 'figures';
+cfg.export_csv    = true;   % 是否导出候选表 CSV(敏感性重跑时关闭)
+end
+\end{lstlisting}
+
+
+% ===================== export_problem2.m =====================
+
+\begin{lstlisting}[language=matlab]
+function export_problem2(out, cfg)
+%EXPORT_PROBLEM2 CSV 与 LaTeX 共用本次输出，避免论文手抄旧数据。
+selected = out.fines(out.selected_index);
+items = {'m_hat_m';'P_best_x';'P_best_y';'f1_best_L_m';'f1_best_U_m';'f1_best_gap_m'; ...
+    'worst_beta_deg';'P_f2_x';'P_f2_y';'f2_L_m';'f2_U_m';'f2_dist_m';'f2_time_s'; ...
+    'tau_m';'n_candidates';'n_fine';'n_eval_calls';'n_cache_hits';'n_pruned'; ...
+    'n_pair_pruned';'n_budget_returns';'t_search_s';'t_total_s'};
+numbers = [out.m_hat;out.P_best;out.f1_best_L;out.f1_best_U;out.f1_best_gap; ...
+    out.worst_beta_best;out.P_f2;selected.L;selected.U;out.f2_dist;out.f2_time; ...
+    out.tau;size(out.Pcand,2);numel(out.fines);out.stats.n_eval_calls; ...
+    out.stats.n_cache_hits;out.stats.n_pruned;out.stats.n_pair_pruned; ...
+    out.stats.n_budget;out.t_total;out.t_run];
+writetable(table(items,numbers,'VariableNames',{'item','value'}), ...
+    fullfile(cfg.results_dir,'final_summary.csv'));
+F = out.fines; P = [F.P];
+T = table(P(1,:)',P(2,:)',[F.L]',[F.U]',[F.gap]',[F.dist]',{F.status}', ...
+    [F.neval]','VariableNames',{'x','y','L','U','gap','dist','status','neval'});
+writetable(T,fullfile(cfg.results_dir,'fine_points.csv'));
+path = fullfile(cfg.results_dir,'problem2_numbers.tex');
+fid = fopen(path,'w','n','UTF-8');
+assert(fid >= 0,'无法写入论文数据文件。'); closer = onCleanup(@() fclose(fid));
+fprintf(fid,'%% 自动生成：请运行 main_problem2 更新，不手动修改此文件。\n');
+names = {'Delta','Lmax','Inner','Receive','Optical','Speed','Tau','CoarseTol','FineTol', ...
+    'ArcN','HoleN','Candidates','FineCount','Calls','SearchTime','RunTime', ...
+    'BestL','BestU','SelectedL','SelectedU','SelectedX','SelectedY','SelectedDist','SelectedTime'};
+vals = [cfg.delta_deg,cfg.Lmax,cfg.r_inner,cfg.R0,cfg.clear_radius,cfg.speed,cfg.tau_m, ...
+    cfg.tol_coarse,cfg.tol_fine,cfg.n_arc,cfg.n_hole_gon,size(out.Pcand,2),numel(F), ...
+    out.stats.n_eval_calls,out.t_total,out.t_run,out.f1_best_L,out.f1_best_U, ...
+    selected.L,selected.U,out.P_f2',out.f2_dist,out.f2_time];
+for k=1:numel(names)
+    value = regexprep(sprintf('%.3f',vals(k)),'\.?0+$','');
+    fprintf(fid,'\\newcommand{\\Q%s}{%s}\n',names{k},value);
+end
+fprintf(fid,'\\newcommand{\\QResultRows}{%%\n');
+labels = {'近似指标最小的候选点','精评上界最小的候选点','兼顾路程的选择'};
+P = [out.P_hat,out.P_best,out.P_f2];
+lower = [out.hat_res.L,out.f1_best_L,selected.L];
+upper = [out.hat_res.U,out.f1_best_U,selected.U];
+for k=1:3
+    fprintf(fid,'%s & $(%.2f,\\,%.2f)$ & $[%.3f,\\,%.3f]$ & %.2f \\\\\n', ...
+        labels{k},P(:,k),lower(k),upper(k),norm(P(:,k)));
+end
+fprintf(fid,'}\n');
+fprintf(fid,'\\newcommand{\\QNearCandidateRows}{%%\n');
+near_fines = out.fines(out.near_indices);
+for i = 1:numel(near_fines)
+    p = near_fines(i);
+    if out.near_indices(i) == out.selected_index
+        mark = ' (最佳推荐)';
+    else
+        mark = '';
+    end
+    fprintf(fid,'候选点 %d%s & $(%.2f,\\,%.2f)$ & $[%.3f,\\,%.3f]$ & %.2f \\\\\n', ...
+        i, mark, p.P(1), p.P(2), p.L, p.U, p.dist);
+end
+fprintf(fid,'}\n');
+
+% =========================================================================
+% 向控制台输出“较好观测点形成的区域”及选出的“最佳点”，供后续问题使用
+% =========================================================================
+fprintf('\n=================================================================\n');
+fprintf('【问题2：较好观测点区域及最佳点推荐 (供后续问题3/4使用)】\n');
+fprintf('根据精评结果，在允许精度让步 (tau = %.2fm) 范围内的较好观测点有 %d 个：\n', cfg.tau_m, numel(out.near_indices));
+
+% 打印在这个区域内的所有较好点
+near_fines = out.fines(out.near_indices);
+for i = 1:numel(near_fines)
+    p = near_fines(i);
+    if i == out.selected_index
+        fprintf(' => [最佳推荐/路程最短] 点位: (%7.2f, %7.2f) | 最坏误差半径: [%.2f, %.2f]m | 距起点: %.2fm\n', ...
+            p.P(1), p.P(2), p.L, p.U, p.dist);
+    else
+        fprintf('    - [较好候选点]       点位: (%7.2f, %7.2f) | 最坏误差半径: [%.2f, %.2f]m | 距起点: %.2fm\n', ...
+            p.P(1), p.P(2), p.L, p.U, p.dist);
+    end
+end
+fprintf('注：您可以将上述【最佳推荐】点的坐标，或其它【较好候选点】的坐标，\n');
+fprintf('    直接复制到后续问题 (如问题3或4) 的路径规划或策略代码中作为第二观测点。\n');
+fprintf('=================================================================\n');
+
+end
+\end{lstlisting}
+
+
+% ===================== get_continuous_region.m =====================
+
+\begin{lstlisting}[language=matlab]
+% get_continuous_region.m
+% 读取 results/out.mat，利用真实的评价函数 eval_P_bounds 在候选点附近进行密集网格采样，
+% 从而找出严格满足精度容差 (U(P) <= m_hat + epsilon) 的连续可行区域，并绘制热力图。
+% 输出两张图：局部图（fig4_continuous_region_local.png）和全局图（fig4_continuous_region_global.png）
+
+function get_continuous_region()
+    root = fileparts(mfilename('fullpath'));
+    old = pwd; cleanup = onCleanup(@() cd(old));
+    cd(root); addpath(genpath(root));
+    
+    fprintf('正在加载结果数据...\n');
+    load('results/out.mat', 'out', 'cfg');
+    
+    P_fines = [out.fines.P];
+    Q = P_fines(:, out.near_indices);
+    
+    % 目标阈值
+    threshold = out.m_hat + cfg.tau_m;
+    fprintf('真实的最优上界基准 m_hat = %.4f m\n', out.m_hat);
+    fprintf('寻找满足 U(P) <= %.4f m (m_hat + %.1f) 的连续区域\n', threshold, cfg.tau_m);
+    
+    cfg.kill_threshold = threshold;
+    cfg.eval_tol = cfg.tol_fine;
+    cfg.eval_budget = 400;
+    
+    [Eb,~] = E_polygon(cfg);
+    
+    % ================= 1. 局部图计算 =================
+    if out.P_f2(2) > 0
+        Q_local = Q(:, Q(2,:) > 0);
+    else
+        Q_local = Q(:, Q(2,:) < 0);
+    end
+    
+    margin_l = 15;
+    min_x_l = min(Q_local(1,:)) - margin_l; max_x_l = max(Q_local(1,:)) + margin_l;
+    min_y_l = min(Q_local(2,:)) - margin_l; max_y_l = max(Q_local(2,:)) + margin_l;
+    
+    grid_size_l = 50;
+    x_vec_l = linspace(min_x_l, max_x_l, grid_size_l);
+    y_vec_l = linspace(min_y_l, max_y_l, grid_size_l);
+    [X_l, Y_l] = meshgrid(x_vec_l, y_vec_l);
+    Z_U_l = NaN(size(X_l));
+    
+    fprintf('开始对局部的 %dx%d 网格进行严密计算...\n', grid_size_l, grid_size_l);
+    tic;
+    for i = 1:numel(X_l)
+        P_test = [X_l(i); Y_l(i)];
+        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:)), continue; end
+        res = eval_P_bounds(P_test, cfg);
+        Z_U_l(i) = res.U;
+    end
+    fprintf('局部网格计算完成，耗时 %.2f 秒。\n', toc);
+    
+    % ================= 2. 全局图计算 =================
+    margin_g = 15;
+    min_x_g = min(Eb(1,:)) - margin_g; max_x_g = max(Eb(1,:)) + margin_g;
+    min_y_g = min(Eb(2,:)) - margin_g; max_y_g = max(Eb(2,:)) + margin_g;
+    
+    grid_size_g = 60;
+    x_vec_g = linspace(min_x_g, max_x_g, grid_size_g);
+    y_vec_g = linspace(min_y_g, max_y_g, grid_size_g);
+    [X_g, Y_g] = meshgrid(x_vec_g, y_vec_g);
+    Z_U_g = NaN(size(X_g));
+    
+    fprintf('开始对全局的 %dx%d 网格进行严密计算...\n', grid_size_g, grid_size_g);
+    tic;
+    for i = 1:numel(X_g)
+        P_test = [X_g(i); Y_g(i)];
+        if ~inpolygon(P_test(1), P_test(2), Eb(1,:), Eb(2,:)), continue; end
+        res = eval_P_bounds(P_test, cfg);
+        Z_U_g(i) = res.U;
+    end
+    fprintf('全局网格计算完成，耗时 %.2f 秒。\n', toc);
+    
+    levels = linspace(out.m_hat, threshold, 6);
+    
+    % ================= 绘制局部图 =================
+    fl = figure('Color', 'w', 'Position', [100 100 850 650], 'Visible', 'off');
+    hold on;
+    contourf(X_l, Y_l, Z_U_l, levels, 'LineStyle', 'none');
+    colormap(flipud(parula));
+    colorbar('Ticks', levels, 'TickLabels', arrayfun(@(x) sprintf('%.2f', x), levels, 'UniformOutput', false));
+    [~, h_cl] = contour(X_l, Y_l, Z_U_l, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
+    plot(Eb(1,:), Eb(2,:), 'k.', 'MarkerSize', 2, 'DisplayName', 'Region E Boundary');
+    scatter(Q(1,:), Q(2,:), 40, 'mo', 'filled', 'MarkerEdgeColor', 'w', 'DisplayName', 'Discrete Candidates');
+    plot(out.P_f2(1), out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Point P');
+    axis equal; grid on;
+    xlim([min_x_l, max_x_l]); ylim([min_y_l, max_y_l]);
+    xlabel('x (m)'); ylabel('y (m)');
+    legend('Location', 'best');
+    
+    save_path_l = fullfile(cfg.fig_dir, 'fig4_continuous_region_local.png');
+    exportgraphics(fl, save_path_l, 'Resolution', 250, 'BackgroundColor', 'white');
+    close(fl);
+    
+    % ================= 绘制全局图 =================
+    fg = figure('Color', 'w', 'Position', [200 200 850 650], 'Visible', 'off');
+    hold on;
+    contourf(X_g, Y_g, Z_U_g, levels, 'LineStyle', 'none');
+    colormap(flipud(parula));
+    colorbar('Ticks', levels, 'TickLabels', arrayfun(@(x) sprintf('%.2f', x), levels, 'UniformOutput', false));
+    [~, h_cg] = contour(X_g, Y_g, Z_U_g, [threshold, threshold], 'LineColor', 'r', 'LineWidth', 2, 'DisplayName', 'Optimal Region Boundary');
+    plot(Eb(1,:), Eb(2,:), 'k-', 'LineWidth', 1.5, 'DisplayName', 'Region E Boundary');
+    scatter(Q(1,:), Q(2,:), 20, 'mo', 'filled', 'MarkerEdgeColor', 'w', 'DisplayName', 'Discrete Candidates');
+    
+    plot(out.P_f2(1), out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'DisplayName', 'Selected Point P');
+    plot(out.P_f2(1), -out.P_f2(2), 'wp', 'MarkerSize', 14, 'MarkerFaceColor', 'r', 'HandleVisibility', 'off');
+    
+    axis equal; grid on;
+    xlim([min_x_g, max_x_g]); ylim([min_y_g, max_y_g]);
+    xlabel('x (m)'); ylabel('y (m)');
+    legend('Location', 'best');
+    
+    save_path_g = fullfile(cfg.fig_dir, 'fig4_continuous_region_global.png');
+    exportgraphics(fg, save_path_g, 'Resolution', 250, 'BackgroundColor', 'white');
+    close(fg);
+    
+    fprintf('已将全局和局部的连续区域分布图保存至 figures 目录\n');
+end
+\end{lstlisting}
+
+
+% ===================== problem2_discrete_sweep.m =====================
+
+\begin{lstlisting}[language=matlab]
+function problem2_discrete_sweep()
+% PROBLEM2_DISCRETE_SWEEP 基于 Kershner 定理和集合覆盖规划离散检测点及 TSP 最短路
+    
+    R = 56.5; % 最坏误差半径
+    r = 20;   % 探测半径
+    v = 5;    % 移动速度 5m/s (假设)
+    t_measure = 5; % 每次测量耗时 5s
+    
+    fprintf('=== 问题2：离散检测点全覆盖路径规划 ===\n');
+    fprintf('误差半径 R = %.1f m, 探测半径 r = %.1f m\n', R, r);
+    
+    % 1. 离散化被覆盖区域 D(0, R)
+    [X, Y] = meshgrid(linspace(-R, R, 150));
+    mask = X.^2 + Y.^2 <= R^2;
+    Px = X(mask); Py = Y(mask);
+    N_target = length(Px);
+    
+    % 2. 基于 Kershner 正六边形密铺定理生成候选中心
+    dx = r * sqrt(3) / 2 * 0.8; 
+    dy = r * 3/4 * 0.8;
+    [CX, CY] = meshgrid(-R-r:dx:R+r, -R-r:dy:R+r);
+    shift = repmat([0, dx/2], size(CX,1), ceil(size(CX,2)/2));
+    shift = shift(:, 1:size(CX,2));
+    CX = CX + shift;
+    
+    c_mask = CX.^2 + CY.^2 <= (R+r/4)^2; 
+    Cx = CX(c_mask); Cy = CY(c_mask);
+    N_cand = length(Cx);
+    
+    % 3. 构造覆盖矩阵 A
+    A = zeros(N_target, N_cand);
+    for j = 1:N_cand
+        dist2 = (Px - Cx(j)).^2 + (Py - Cy(j)).^2;
+        A(:, j) = (dist2 <= r^2);
+    end
+    
+    % 4. 求解最小集合覆盖问题 (Set Cover ILP)
+    f = ones(N_cand, 1);
+    intcon = 1:N_cand;
+    b = -ones(N_target, 1);
+    
+    options = optimoptions('intlinprog', 'Display', 'off');
+    [x_opt, fval, exitflag] = intlinprog(f, intcon, -A, b, [], [], zeros(N_cand,1), ones(N_cand,1), options);
+    
+    if exitflag > 0
+        N_opt = round(fval);
+        sel = x_opt > 0.5;
+        Sel_X = Cx(sel); Sel_Y = Cy(sel);
+        fprintf('成功求得最小检测点数量: %d 个\n', N_opt);
+        
+        pts = [Sel_X, Sel_Y];
+        
+        % 5. 求解 TSP 遍历最短路径 (贪心 + 2-opt)
+        start_pt = [0, 0];
+        [tour_idx, tour_dist] = solve_tsp(pts, start_pt);
+        
+        total_time = N_opt * t_measure + tour_dist / v;
+        fprintf('TSP 最短行走距离: %.2f m\n', tour_dist);
+        fprintf('预估总耗时 (含 %d 次停机检测): %.2f s\n', N_opt, total_time);
+        
+        % 6. 可视化绘图
+        plot_discrete_coverage(R, r, pts, tour_idx, start_pt, tour_dist, N_opt);
+    else
+        fprintf('ILP 求解失败，无法找到全覆盖子集。\n');
+    end
+end
+
+function [best_tour, best_dist] = solve_tsp(pts, start_pt)
+    N = size(pts, 1);
+    unvisited = 1:N;
+    curr = start_pt;
+    tour = [];
+    dist = 0;
+    
+    % 贪心初始化
+    while ~isempty(unvisited)
+        [~, idx] = min(sum((pts(unvisited,:) - curr).^2, 2));
+        next = unvisited(idx);
+        dist = dist + norm(pts(next,:) - curr);
+        tour(end+1) = next;
+        curr = pts(next,:);
+        unvisited(idx) = [];
+    end
+    
+    % 简单的 2-opt 优化
+    improved = true;
+    while improved
+        improved = false;
+        for i = 1:N-2
+            for j = i+2:N
+                new_tour = tour;
+                new_tour(i+1:j) = wrev(tour(i+1:j)); % 逆序子路径
+                new_dist = calc_tour_dist(new_tour, pts, start_pt);
+                if new_dist < dist - 1e-5
+                    tour = new_tour;
+                    dist = new_dist;
+                    improved = true;
+                end
+            end
+        end
+    end
+    best_tour = tour;
+    best_dist = dist;
+end
+
+function rev = wrev(arr)
+    rev = arr(end:-1:1);
+end
+
+function d = calc_tour_dist(tour, pts, start_pt)
+    d = norm(pts(tour(1),:) - start_pt);
+    for i = 1:length(tour)-1
+        d = d + norm(pts(tour(i+1),:) - pts(tour(i),:));
+    end
+end
+
+function plot_discrete_coverage(R, r, pts, tour_idx, start_pt, tour_dist, N_opt)
+    fig = figure('Color', 'w', 'Position', [150, 150, 750, 700]);
+    hold on; axis equal;
+    
+    % 画目标误差圆
+    theta = linspace(0, 2*pi, 200);
+    plot(R*cos(theta), R*sin(theta), 'r--', 'LineWidth', 2, 'DisplayName', sprintf('最坏误差圆 (R=%.1fm)', R));
+    
+    % 画起点
+    plot(start_pt(1), start_pt(2), 'kp', 'MarkerFaceColor', 'y', 'MarkerSize', 15, 'DisplayName', '假定第二观测点(起点)');
+    
+    % 画检测点的探测范围
+    h_circle = gobjects(0);
+    for i = 1:N_opt
+        h = fill(pts(i,1)+r*cos(theta), pts(i,2)+r*sin(theta), [0.3 0.6 0.9], 'EdgeColor', 'b', 'FaceAlpha', 0.2, 'HandleVisibility', 'off');
+        if i==1, h_circle = h; end
+    end
+    set(h_circle, 'DisplayName', '20m 探测覆盖区');
+    
+    % 画 TSP 路径
+    path_pts = [start_pt; pts(tour_idx, :)];
+    plot(path_pts(:,1), path_pts(:,2), 'm-', 'LineWidth', 2.5, 'DisplayName', '无人狗遍历检测路线');
+    
+    % 标记检测点序号
+    plot(pts(:,1), pts(:,2), 'mo', 'MarkerFaceColor', 'm', 'MarkerSize', 8, 'HandleVisibility', 'off');
+    for i = 1:N_opt
+        text(pts(tour_idx(i),1)+2, pts(tour_idx(i),2)+2, num2str(i), 'Color', 'k', 'FontWeight', 'bold', 'FontSize', 12);
+    end
+    
+    title(sprintf('基于正六边形密铺的最优离散检测点全覆盖路径\n(最少停机检测点: %d 个, 路线长度: %.2f m)', N_opt, tour_dist), 'FontSize', 13);
+    xlabel('X 坐标 (m)'); ylabel('Y 坐标 (m)');
+    legend('Location', 'northeastoutside', 'FontSize', 10);
+    grid on; xlim([-R-r-5, R+r+5]); ylim([-R-r-5, R+r+5]);
+    
+    out_file = fullfile(fileparts(mfilename('fullpath')), 'results', 'problem2_discrete_coverage.png');
+    saveas(fig, out_file);
+    fprintf('绘图成功！已保存至: %s\n', out_file);
+end
+\end{lstlisting}
+
+
+% ===================== problem2_sweep_path.m =====================
+
+\begin{lstlisting}[language=matlab]
+function problem2_sweep_path()
+% PROBLEM2_SWEEP_PATH 自适应计算并证明任意误差半径 R 下的最短全覆盖路径
+% 不仅输出最坏情况 (R=56.5m) 的覆盖图，还生成 R 属于 [21, 56.5] 时的最优路径长度曲线。
+
+    r = 20; % 仪器的探测半径
+    
+    % ==========================================
+    % 1. 计算不同 R 下的最优路径长度 (证明普适性)
+    % ==========================================
+    fprintf('正在验证任意 R 属于 (20, 56.5] 的自适应最优全覆盖路径...\n');
+    R_array = linspace(21, 56.5, 30);
+    L_array = zeros(size(R_array));
+    
+    for i = 1:length(R_array)
+        R = R_array(i);
+        [L_array(i), ~] = optimize_sweep(R, r, false);
+    end
+    
+    % 绘制 L - R 关系曲线
+    fig1 = figure('Color', 'w', 'Position', [100, 100, 700, 500]);
+    plot(R_array, L_array, 'b-', 'LineWidth', 2.5);
+    hold on;
+    % 标注分界点
+    xline(40, 'r--', 'LineWidth', 1.5, 'Label', '拓扑相变点 (R=40m)');
+    plot(R_array, L_array, 'bo', 'MarkerFaceColor', 'w', 'MarkerSize', 4);
+    
+    title('最短全覆盖路径长度 L 随误差圆半径 R 的变化规律', 'FontSize', 14);
+    xlabel('未知误差圆半径 R (m)', 'FontSize', 12);
+    ylabel('最优全覆盖路径长度 L (m)', 'FontSize', 12);
+    grid on;
+    
+    text(25, 250, '2趟扫线 (U型拓扑)', 'FontSize', 12, 'Color', 'k');
+    text(45, 250, '3趟扫线 (S型拓扑)', 'FontSize', 12, 'Color', 'k');
+    
+    out_file1 = fullfile(fileparts(mfilename('fullpath')), 'results', 'problem2_LR_curve.png');
+    if ~isfolder(fileparts(out_file1)), mkdir(fileparts(out_file1)); end
+    saveas(fig1, out_file1);
+    fprintf('规律证明曲线已保存至: %s\n', out_file1);
+    
+    % ==========================================
+    % 2. 针对最坏情况 (R = 56.5) 生成具体清扫路线图
+    % ==========================================
+    R_worst = 56.5;
+    [L_worst, pts_worst] = optimize_sweep(R_worst, r, true);
+    
+    fprintf('\n===== 优化完成 =====\n');
+    fprintf('最坏情况 (R=%.1f m) 下的最短全覆盖路径总长度: %.2f m\n', R_worst, L_worst);
+    
+    plot_sweep_result(pts_worst, R_worst, r, L_worst);
+end
+
+function [fval, pts] = optimize_sweep(R, r, verbose)
+    % 生成高密度测试点
+    [X, Y] = meshgrid(linspace(-R, R, 150));
+    mask = X.^2 + Y.^2 <= R^2;
+    Px = X(mask);
+    Py = Y(mask);
+    
+    options = optimoptions('fmincon', 'Display', 'none', 'Algorithm', 'sqp', ...
+        'MaxFunctionEvaluations', 2000, 'StepTolerance', 1e-6);
+    
+    % 根据 R 动态选择扫线拓扑
+    if R <= 40
+        % 2 趟扫线 (U型拓扑)
+        x0 = [R, R/2];
+        lb = [0, 0];
+        ub = [R, R];
+        obj = @(v) 4*v(1) + 2*v(2);
+        nonlcon = @(v) constraint_2sweep(v, Px, Py, r);
+    else
+        % 3 趟扫线 (S型/割草机拓扑)
+        x0 = [R*0.8, R*0.6, R*0.8];
+        lb = [0, 0, 0];
+        ub = [R, R, R];
+        obj = @(v) 4*v(1) + 2*v(3) + 2*sqrt((v(3)-v(1))^2 + v(2)^2);
+        nonlcon = @(v) constraint_3sweep(v, Px, Py, r);
+    end
+    
+    if verbose, fprintf('开始寻优 R = %.1f m ...\n', R); end
+    [v_opt, fval] = fmincon(obj, x0, [], [], [], [], lb, ub, nonlcon, options);
+    
+    % 重建节点
+    if R <= 40
+        x1 = v_opt(1); y1 = v_opt(2);
+        pts = [x1, y1; -x1, y1; -x1, -y1; x1, -y1];
+    else
+        x1 = v_opt(1); y1 = v_opt(2); x2 = v_opt(3);
+        pts = [x1, y1; -x1, y1; -x2, 0; x2, 0; x1, -y1; -x1, -y1];
+    end
+end
+
+function [c, ceq] = constraint_2sweep(v, Px, Py, r)
+    x1 = v(1); y1 = v(2); r2 = r^2;
+    d1 = dist2seg(Px, Py, x1, y1, -x1, y1);
+    d2 = dist2seg(Px, Py, -x1, y1, -x1, -y1);
+    d3 = dist2seg(Px, Py, -x1, -y1, x1, -y1);
+    min_d = min(cat(2, d1, d2, d3), [], 2);
+    c = min_d - r2 + 1e-4; 
+    ceq = [];
+end
+
+function [c, ceq] = constraint_3sweep(v, Px, Py, r)
+    x1 = v(1); y1 = v(2); x2 = v(3); r2 = r^2;
+    d1 = dist2seg(Px, Py, x1, y1, -x1, y1);
+    d2 = dist2seg(Px, Py, -x1, y1, -x2, 0);
+    d3 = dist2seg(Px, Py, -x2, 0, x2, 0);
+    d4 = dist2seg(Px, Py, x2, 0, x1, -y1);
+    d5 = dist2seg(Px, Py, x1, -y1, -x1, -y1);
+    min_d = min(cat(2, d1, d2, d3, d4, d5), [], 2);
+    c = min_d - r2 + 1e-4; 
+    ceq = [];
+end
+
+function d2 = dist2seg(px, py, ax, ay, bx, by)
+    dx = bx - ax; dy = by - ay; l2 = dx^2 + dy^2;
+    if l2 == 0
+        d2 = (px - ax).^2 + (py - ay).^2; return;
+    end
+    t = max(0, min(1, ((px - ax)*dx + (py - ay)*dy) / l2));
+    projx = ax + t * dx; projy = ay + t * dy;
+    d2 = (px - projx).^2 + (py - projy).^2;
+end
+
+function plot_sweep_result(pts, R, r, fval)
+    fig = figure('Color', 'w', 'Position', [150, 150, 750, 650]);
+    hold on; axis equal;
+    
+    n_pts = size(pts, 1);
+    h_fill = gobjects(0);
+    for i=1:(n_pts-1)
+        h = plot_capsule(pts(i,1), pts(i,2), pts(i+1,1), pts(i+1,2), r);
+        if i==1, h_fill = h; end
+    end
+    set(h_fill, 'DisplayName', '20m 探测仪扫掠覆盖区');
+    
+    theta = linspace(0, 2*pi, 200);
+    plot(R*cos(theta), R*sin(theta), 'r--', 'LineWidth', 2, 'DisplayName', sprintf('未知干扰源可能区域 (R=%.1fm)', R));
+    plot(0, 0, 'rx', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName', '最坏误差圆心');
+    plot(pts(:,1), pts(:,2), 'b-', 'LineWidth', 2.5, 'DisplayName', '无人狗最短覆盖路径');
+    plot(pts(:,1), pts(:,2), 'bo', 'MarkerFaceColor', 'w', 'MarkerSize', 5, 'HandleVisibility', 'off');
+    plot(pts(1,1), pts(1,2), 'gp', 'MarkerFaceColor', 'g', 'MarkerSize', 15, 'DisplayName', '路径起点');
+    plot(pts(end,1), pts(end,2), 'ks', 'MarkerFaceColor', 'k', 'MarkerSize', 10, 'DisplayName', '路径终点');
+    
+    title(sprintf('最坏情况 (R=%.1fm) 的最短全覆盖扫雷路径 (L=%.2fm)', R, fval), 'FontSize', 13);
+    xlabel('X 坐标 (m)'); ylabel('Y 坐标 (m)');
+    legend('Location', 'northeastoutside', 'FontSize', 10);
+    grid on; xlim([-R-r-5, R+r+5]); ylim([-R-r-5, R+r+5]);
+    
+    out_file = fullfile(fileparts(mfilename('fullpath')), 'results', 'problem2_coverage_path.png');
+    saveas(fig, out_file);
+    fprintf('覆盖区域绘图成功！已保存至: %s\n', out_file);
+end
+
+function h = plot_capsule(ax, ay, bx, by, r)
+    dir = [bx-ax, by-ay]; len = norm(dir);
+    if len == 0
+        theta = linspace(0, 2*pi, 50);
+        h = fill(ax+r*cos(theta), ay+r*sin(theta), [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+        return;
+    end
+    dir = dir / len; perp = [-dir(2), dir(1)];
+    p1 = [ax, ay] + r*perp; p2 = [bx, by] + r*perp;
+    p3 = [bx, by] - r*perp; p4 = [ax, ay] - r*perp;
+    h = fill([p1(1) p2(1) p3(1) p4(1)], [p1(2) p2(2) p3(2) p4(2)], [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+    theta = linspace(0, 2*pi, 30);
+    fill(ax+r*cos(theta), ay+r*sin(theta), [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+    fill(bx+r*cos(theta), by+r*sin(theta), [0.85 0.93 1], 'EdgeColor', 'none', 'FaceAlpha', 0.6, 'HandleVisibility', 'off');
+end
+\end{lstlisting}
 
 \end{appendices}
 
