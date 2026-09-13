@@ -11,3 +11,13 @@
 
 # 忽略按时间戳生成的 MATLAB 临时数据
 *_run_*.mat
+
+
+# 本地仿真和预览输出
+/问题3仿真可视化/
+/问题3共享优化结果/
+/问题3参数灵敏度结果/
+/问题3天眼版/omniscient_mc_results.csv
+/问题3天眼版/omniscient_time_per_source.png
+/问题3，4论文及可视化/图_问题三检测点覆盖方案.png
+/问题3，4论文及可视化/预览.pdf

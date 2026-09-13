@@ -1,7 +1,8 @@
 function out = problem3_solver_optimized(robotId, baseUrl)
-% 问题三优化版：短半径覆盖骨架 + 动态开放路径。
+% 问题三优化版快照：短半径覆盖骨架 + 动态开放路径 + 同点多频道观测。
 % 官方模拟器就绪后：out = problem3_solver_optimized('你们的参赛队号');
 % 本地公平对比请运行 problem3_compare_monte_carlo。
+% 本文件固化自 problem3_solver_shared.m 的当前论文算法，后续参数试验不再修改本文件。
 % 基础款 problem3_solver.m 保持不变；本文件继续复用问题一、二的几何工具。
 if nargin < 1, error('请传入参赛队号；本地测试请运行 problem3_compare_monte_carlo。'); end
 if nargin < 2, baseUrl = 'http://127.0.0.1:2026'; end
@@ -58,18 +59,23 @@ while true
                        unseen(2,:)'-anchors(2,:))<=coverR,1);
 
     % 把待清除目标与尚有覆盖贡献的骨架站放入同一条开放路径。
-    tasks = [centers(:,pending),anchors(:,useful)];
-    tour = zeros(1,size(tasks,2)); left = 1:size(tasks,2); q = pos;
+    % 每个任务同时记录：位置、类型及关联频道
+    taskPos = [centers(:,pending),anchors(:,useful)];
+    taskType = [ones(1,numel(pending)),2*ones(1,nnz(useful))];
+    % taskType：1=干扰源定位/清除任务，2=搜索站扫描任务
+    taskChannels = [num2cell(pending),repmat({[]},1,nnz(useful))];
+    % 搜索站到达后实时扫描全部频道，因此其频道集合暂时为空
+    tour = zeros(1,size(taskPos,2)); left = 1:size(taskPos,2); q = pos;
     for i = 1:numel(tour)
-        [~,j] = min(vecnorm(tasks(:,left)-q));
-        tour(i)=left(j); q=tasks(:,left(j)); left(j)=[];
+        [~,j] = min(vecnorm(taskPos(:,left)-q));
+        tour(i)=left(j); q=taskPos(:,left(j)); left(j)=[];
     end
     improved = true;
     while improved
         improved = false;
         for i = 1:numel(tour)-1
             for j = i+1:numel(tour)
-                route=[pos,tasks(:,tour)];
+                route=[pos,taskPos(:,tour)];
                 old=norm(route(:,i)-route(:,i+1));
                 new=norm(route(:,i)-route(:,j+1));
                 if j<numel(tour)
@@ -81,8 +87,8 @@ while true
         end
     end
     j=tour(1);
-    if j>numel(pending)
-        q=tasks(:,j); order=[channel,setdiff(1:20,channel,'stable')];
+    if taskType(j)==2
+        q=taskPos(:,j); order=[channel,setdiff(1:20,channel,'stable')];
         for k=order
             if ~done(k) && (~known(k)||radii(k)>60), observe(q,k); end
         end
@@ -90,7 +96,8 @@ while true
         continue;
     end
 
-    k = pending(j);
+    S = taskChannels{j};
+    k = S(1);
     for step = 1:12
         if done(k), break; end
         c = centers(:,k); r = radii(k);
